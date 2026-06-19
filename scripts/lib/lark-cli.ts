@@ -37,14 +37,25 @@ export function runCommand(command: string, args: string[], cwd = process.cwd())
 }
 
 export function extractJson(output: string): unknown {
-  const start = output.indexOf("{");
-  if (start < 0) {
-    throw new Error(`No JSON object found in command output: ${output.slice(0, 200)}`);
+  for (let start = output.indexOf("{"); start >= 0; start = output.indexOf("{", start + 1)) {
+    const objectSource = extractJsonObjectSource(output, start);
+    if (!objectSource) continue;
+
+    try {
+      return JSON.parse(objectSource);
+    } catch {
+      continue;
+    }
   }
 
+  throw new Error(`No JSON object found in command output: ${output.slice(0, 200)}`);
+}
+
+function extractJsonObjectSource(output: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;
+
   for (let index = start; index < output.length; index += 1) {
     const char = output[index];
 
@@ -66,10 +77,10 @@ export function extractJson(output: string): unknown {
     } else if (char === "}") {
       depth -= 1;
       if (depth === 0) {
-        return JSON.parse(output.slice(start, index + 1));
+        return output.slice(start, index + 1);
       }
     }
   }
 
-  throw new Error(`No complete JSON object found in command output: ${output.slice(0, 200)}`);
+  return null;
 }

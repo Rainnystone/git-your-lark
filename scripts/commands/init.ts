@@ -131,7 +131,12 @@ async function resolveRemoteFolder(options: Required<Pick<InitCommandOptions, "c
     return null;
   }
 
-  return extractCreatedFolder(extractJson(result.stdout));
+  try {
+    return extractCreatedFolder(extractJson(result.stdout));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return null;
+  }
 }
 
 export async function initCommand(options: InitCommandOptions): Promise<number> {
