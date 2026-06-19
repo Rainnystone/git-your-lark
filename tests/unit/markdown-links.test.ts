@@ -62,4 +62,10 @@ describe("parseMarkdownAttachments", () => {
 
     expect(attachments.map((attachment) => attachment.target)).toEqual(["assets/foo(1).png"]);
   });
+
+  it("parses image destinations with title syntax", () => {
+    const attachments = parseMarkdownAttachments(`![Image](assets/foo.png "Title")`);
+
+    expect(attachments.map((attachment) => attachment.target)).toEqual(["assets/foo.png"]);
+  });
 });

@@ -110,4 +110,25 @@ describe("scanLocalWorkspace", () => {
       owner: "a.md"
     });
   });
+
+  it("hashes referenced image attachments that use markdown title syntax", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-local-scan-"));
+    await mkdir(join(workspaceRoot, "assets"), { recursive: true });
+    await writeFile(join(workspaceRoot, "note.md"), `![Image](assets/foo.png "Title")\n`, "utf8");
+    await writeFile(join(workspaceRoot, "assets", "foo.png"), "image", "utf8");
+
+    const manifest = await scanLocalWorkspace({
+      workspaceRoot,
+      include: ["**/*.md"],
+      exclude: []
+    });
+
+    expect(manifest.attachments).toHaveLength(1);
+    expect(manifest.attachments[0]).toMatchObject({
+      path: "assets/foo.png",
+      owner: "note.md"
+    });
+    expect(manifest.attachments[0]?.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(manifest.attachments[0]?.hash).not.toBe("missing");
+  });
 });

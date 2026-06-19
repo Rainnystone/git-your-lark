@@ -122,12 +122,12 @@ function stripIndentedCode(markdown: string): string {
 }
 
 function stripMarkdownTitle(destination: string): string {
-  const quotedTitle = destination.match(/^(.+?\.md)\s+(?:"[^"]*"|'[^']*')\s*$/i);
+  const quotedTitle = destination.match(/^(.+\.[^\s.]+)\s+(?:"[^"]*"|'[^']*')\s*$/);
   if (quotedTitle) {
     return quotedTitle[1];
   }
 
-  const parenthesizedTitle = destination.match(/^(.+?\.md)\s+\([^()]*\)\s*$/i);
+  const parenthesizedTitle = destination.match(/^(.+\.[^\s.]+)\s+\([^()]*\)\s*$/);
   if (parenthesizedTitle) {
     return parenthesizedTitle[1];
   }
