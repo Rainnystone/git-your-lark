@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx scripts/gyl.ts",
-    "validate:plugin": "python3 /Users/tachikoma/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py ."
+    "validate:plugin": "node scripts/validate-plugin.mjs"
   },
   "dependencies": {
     "commander": "^12.1.0",
