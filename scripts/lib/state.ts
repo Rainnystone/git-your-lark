@@ -1,3 +1,5 @@
+import { readJson, writeJson } from "./fs-utils.js";
+
 export interface RemoteDocumentState {
   path: string;
   title: string;
@@ -32,4 +34,16 @@ export function emptyState(remoteFolderToken: string, remoteFolderUrl?: string):
     documents: {},
     attachments: {}
   };
+}
+
+export async function loadState(path: string, remoteFolderToken: string): Promise<GitYourLarkState> {
+  try {
+    return await readJson<GitYourLarkState>(path);
+  } catch {
+    return emptyState(remoteFolderToken);
+  }
+}
+
+export async function saveState(path: string, state: GitYourLarkState): Promise<void> {
+  await writeJson(path, state);
 }

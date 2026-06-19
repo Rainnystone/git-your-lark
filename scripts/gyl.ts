@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { scanCommand } from "./commands/scan.js";
 
 const program = new Command();
 
@@ -39,6 +40,14 @@ program
       workspaceRoot: options.workspaceRoot,
       force: options.force
     });
+  });
+
+program
+  .command("scan")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Scan local and remote workspace state.")
+  .action(async (options) => {
+    process.exitCode = await scanCommand(options.config);
   });
 
 await program.parseAsync(process.argv);
