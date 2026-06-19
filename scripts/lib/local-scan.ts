@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import fg from "fast-glob";
 import { sha256Buffer, sha256Text } from "./hash.js";
 import { parseMarkdownAttachments, parseMarkdownReferences, type MarkdownReference } from "./markdown-links.js";
@@ -52,10 +52,12 @@ export async function scanLocalWorkspace(input: LocalScanInput): Promise<LocalMa
     const documentAttachments: LocalAttachment[] = [];
 
     for (const attachment of parseMarkdownAttachments(content)) {
-      const attachmentPath = normalizePath(relative(workspaceRoot, resolve(dirname(absoluteDocumentPath), attachment.target)));
+      const absoluteAttachmentPath = resolve(dirname(absoluteDocumentPath), attachment.target);
+      const attachmentPath = normalizePath(relative(workspaceRoot, absoluteAttachmentPath));
+      const attachmentHash = isInsideWorkspace(absoluteAttachmentPath, workspaceRoot) ? await hashAttachment(absoluteAttachmentPath) : "missing";
       const localAttachment = {
         path: attachmentPath,
-        hash: await hashAttachment(join(workspaceRoot, attachmentPath)),
+        hash: attachmentHash,
         owner: normalizedDocumentPath
       };
       documentAttachments.push(localAttachment);
@@ -100,4 +102,10 @@ function stem(path: string): string {
 
 function normalizePath(path: string): string {
   return path.split("\\").join("/");
+}
+
+function isInsideWorkspace(path: string, workspaceRoot: string): boolean {
+  const resolvedPath = resolve(path);
+  const resolvedRoot = resolve(workspaceRoot);
+  return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep}`);
 }
