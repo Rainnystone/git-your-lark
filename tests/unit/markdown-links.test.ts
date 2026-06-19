@@ -37,6 +37,12 @@ Ignore [[code_block]]
     expect(refs.map((ref) => ref.target)).toEqual(["real"]);
   });
 
+  it("preserves line structure when indented code precedes fenced code", () => {
+    const refs = parseMarkdownReferences("    [[indented]]\n```\n[[fenced]]\n```\n[[real]]");
+
+    expect(refs.map((ref) => ref.target)).toEqual(["real"]);
+  });
+
   it("parses markdown links with quoted title syntax", () => {
     const refs = parseMarkdownReferences(`[Doc](foo.md "Title")`);
 

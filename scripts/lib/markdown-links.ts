@@ -118,7 +118,7 @@ function stripInlineCode(markdown: string): string {
 }
 
 function stripIndentedCode(markdown: string): string {
-  return markdown.replace(/^(?: {4}|\t).*(?:\n|$)/gm, (match) => " ".repeat(match.length));
+  return markdown.replace(/^(?: {4}|\t).*(\n|$)/gm, (match, lineEnding: string) => " ".repeat(match.length - lineEnding.length) + lineEnding);
 }
 
 function stripMarkdownTitle(destination: string): string {
