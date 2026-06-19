@@ -1,6 +1,7 @@
-import type { LocalAttachment, LocalDocument, LocalManifest } from "./local-scan.js";
+import { posix } from "node:path";
+import type { LocalDocument, LocalManifest } from "./local-scan.js";
 import type { RemoteEntry, RemoteManifest } from "./remote-scan.js";
-import type { GitYourLarkState, RemoteDocumentState } from "./state.js";
+import type { GitYourLarkState } from "./state.js";
 
 export type ProposalAction =
   | {
@@ -43,44 +44,57 @@ export interface BuildProposalInput {
 export function buildProposal(input: BuildProposalInput): SyncProposal {
   const createdAt = (input.now ?? new Date()).toISOString();
   const localTargets = buildLocalTargetIndex(input.local.documents);
-  const remoteByToken = new Map(input.remote.entries.map((entry) => [entry.token, entry]));
-  const remoteByName = new Map(input.remote.entries.map((entry) => [entry.name, entry]));
+  const remoteDocuments = input.remote.entries.filter(isRemoteDocument);
+  const remoteByToken = new Map(remoteDocuments.map((entry) => [entry.token, entry]));
+  const remoteByName = new Map(remoteDocuments.map((entry) => [entry.name, entry]));
+  const consumedRemoteTokens = new Set<string>();
   const actions: ProposalAction[] = [];
   const blockers: string[] = [];
   const warnings: string[] = [];
 
   for (const document of input.local.documents) {
     for (const reference of document.references) {
-      if (!localTargets.has(reference.target)) {
+      if (!resolvesLocalReference(reference.target, document.path, localTargets)) {
         blockers.push(`Unresolved reference in ${document.path}: ${reference.target}`);
       }
     }
 
     const documentState = input.state.documents[document.path];
-    const remoteEntry = findRemoteDocument(document, documentState, remoteByToken, remoteByName);
-
-    if (!remoteEntry) {
-      actions.push({
-        kind: "create-document",
-        path: document.path,
-        title: document.title,
-        hash: document.hash
-      });
+    if (documentState) {
+      const remoteEntry = remoteByToken.get(documentState.token);
+      if (!remoteEntry) {
+        blockers.push(`State token missing from remote scan for ${document.path}: ${documentState.token}`);
+        continue;
+      }
+      consumedRemoteTokens.add(remoteEntry.token);
+      if (documentState.localHash !== document.hash) {
+        actions.push({
+          kind: "patch-document",
+          path: document.path,
+          title: document.title,
+          token: documentState.token,
+          hash: document.hash,
+          ...(remoteEntry.modifiedTime ?? documentState.remoteModifiedTime
+            ? { baseRemoteModifiedTime: remoteEntry.modifiedTime ?? documentState.remoteModifiedTime }
+            : {})
+        });
+      }
       continue;
     }
 
-    if (documentState && documentState.localHash !== document.hash) {
-      actions.push({
-        kind: "patch-document",
-        path: document.path,
-        title: document.title,
-        token: documentState.token,
-        hash: document.hash,
-        ...(remoteEntry.modifiedTime ?? documentState.remoteModifiedTime
-          ? { baseRemoteModifiedTime: remoteEntry.modifiedTime ?? documentState.remoteModifiedTime }
-          : {})
-      });
+    const unboundRemoteEntry = findRemoteDocumentByLocalTitle(document, remoteByName);
+    if (unboundRemoteEntry) {
+      consumedRemoteTokens.add(unboundRemoteEntry.token);
+      blockers.push(`Remote document with title exists but is not bound in state: ${document.path} -> ${document.title}`);
+      continue;
     }
+
+    actions.push({
+      kind: "create-document",
+      path: document.path,
+      title: document.title,
+      hash: document.hash
+    });
   }
 
   for (const attachment of input.local.attachments) {
@@ -103,7 +117,14 @@ export function buildProposal(input: BuildProposalInput): SyncProposal {
   const localDocumentPaths = new Set(input.local.documents.map((document) => document.path));
   for (const [path, documentState] of Object.entries(input.state.documents)) {
     if (!localDocumentPaths.has(path) && remoteByToken.has(documentState.token)) {
+      consumedRemoteTokens.add(documentState.token);
       warnings.push(`Remote-only document left untouched: ${path}`);
+    }
+  }
+
+  for (const remoteDocument of remoteDocuments) {
+    if (!consumedRemoteTokens.has(remoteDocument.token)) {
+      warnings.push(`Unmanaged remote document left untouched: ${remoteDocument.name}`);
     }
   }
 
@@ -142,20 +163,24 @@ function buildLocalTargetIndex(documents: LocalDocument[]): Set<string> {
     targets.add(document.path);
     targets.add(document.stem);
     targets.add(stripMarkdownExtension(document.path));
+    targets.add(stripMarkdownExtension(document.path.split("/").at(-1) ?? document.path));
   }
   return targets;
 }
 
-function findRemoteDocument(
+function findRemoteDocumentByLocalTitle(
   document: LocalDocument,
-  documentState: RemoteDocumentState | undefined,
-  remoteByToken: Map<string, RemoteEntry>,
   remoteByName: Map<string, RemoteEntry>
 ): RemoteEntry | undefined {
-  if (documentState) {
-    return remoteByToken.get(documentState.token);
-  }
   return remoteByName.get(document.title) ?? remoteByName.get(document.stem) ?? remoteByName.get(stripMarkdownExtension(document.path));
+}
+
+function resolvesLocalReference(target: string, ownerPath: string, localTargets: Set<string>): boolean {
+  if (localTargets.has(target)) {
+    return true;
+  }
+  const relativeTarget = normalizePath(posix.join(posix.dirname(ownerPath), target));
+  return localTargets.has(relativeTarget) || localTargets.has(stripMarkdownExtension(relativeTarget));
 }
 
 function renderAction(action: ProposalAction): string {
@@ -177,6 +202,14 @@ function renderList(items: string[]): string {
 
 function stripMarkdownExtension(path: string): string {
   return path.endsWith(".md") ? path.slice(0, -3) : path;
+}
+
+function normalizePath(path: string): string {
+  return posix.normalize(path).replace(/^\.\//, "");
+}
+
+function isRemoteDocument(entry: RemoteEntry): boolean {
+  return entry.type === "docx";
 }
 
 function proposalId(createdAt: string): string {

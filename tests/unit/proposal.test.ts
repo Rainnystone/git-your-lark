@@ -61,6 +61,51 @@ describe("buildProposal", () => {
     expect(proposal.warnings).toEqual(["Remote-only document left untouched: old_doc.md"]);
   });
 
+  it("blocks local docs that collide with unbound same-title remote docs", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [localDocument({ path: "000_index.md", title: "000_index", stem: "000_index" })]
+      }),
+      remote: remoteManifest({
+        entries: [remoteDocument({ name: "000_index", token: "doc1" })]
+      }),
+      state: state()
+    });
+
+    expect(proposal.actions).toEqual([]);
+    expect(proposal.blockers).toEqual(["Remote document with title exists but is not bound in state: 000_index.md -> 000_index"]);
+  });
+
+  it("blocks state-bound docs when the state token is missing from the remote scan", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [localDocument({ path: "000_index.md", hash: "new" })]
+      }),
+      remote: remoteManifest({ entries: [] }),
+      state: state({
+        documents: {
+          "000_index.md": stateDocument({ path: "000_index.md", token: "doc-missing", localHash: "old" })
+        }
+      })
+    });
+
+    expect(proposal.actions).toEqual([]);
+    expect(proposal.blockers).toEqual(["State token missing from remote scan for 000_index.md: doc-missing"]);
+  });
+
+  it("warns about unmanaged remote docx entries without deleting them", () => {
+    const proposal = buildProposal({
+      local: localManifest({ documents: [] }),
+      remote: remoteManifest({
+        entries: [remoteDocument({ name: "remote_only", token: "doc-remote-only" })]
+      }),
+      state: state()
+    });
+
+    expect(proposal.actions).toEqual([]);
+    expect(proposal.warnings).toEqual(["Unmanaged remote document left untouched: remote_only"]);
+  });
+
   it("blocks unresolved references", () => {
     const proposal = buildProposal({
       local: localManifest({
@@ -76,6 +121,25 @@ describe("buildProposal", () => {
     });
 
     expect(proposal.blockers).toEqual(["Unresolved reference in 000_index.md: missing_doc"]);
+  });
+
+  it("resolves relative markdown references from the owner document directory", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [
+          localDocument({
+            path: "docs/a.md",
+            references: [{ target: "b.md", raw: "[B](b.md)" }]
+          }),
+          localDocument({ path: "docs/b.md" })
+        ]
+      }),
+      remote: remoteManifest(),
+      state: state()
+    });
+
+    expect(proposal.blockers).toEqual([]);
+    expect(proposal.actions.map((action) => action.kind)).toEqual(["create-document", "create-document"]);
   });
 
   it("blocks missing attachments", () => {
