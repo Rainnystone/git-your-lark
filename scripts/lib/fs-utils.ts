@@ -5,6 +5,10 @@ export async function readUtf8(path: string): Promise<string> {
   return readFile(path, "utf8");
 }
 
+export async function readJson<T = unknown>(path: string): Promise<T> {
+  return JSON.parse(await readFile(path, "utf8")) as T;
+}
+
 export async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");

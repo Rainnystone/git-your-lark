@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const ConfigSchema = z.object({
   workspaceRoot: z.string().default("."),
-  remoteFolderToken: z.string().min(1, "remoteFolderToken is required"),
+  remoteFolderToken: z.string().trim().min(1, "remoteFolderToken is required"),
   remoteFolderUrl: z.string().optional(),
   include: z.array(z.string()).default(["**/*.md"]),
   exclude: z.array(z.string()).default([
@@ -22,7 +22,7 @@ export const ConfigSchema = z.object({
     writeDelayMs: z.number().int().min(0).default(5000),
     retries: z.number().int().min(0).default(4)
   }).default({})
-});
+}).strict();
 
 export type GitYourLarkConfig = z.infer<typeof ConfigSchema>;
 

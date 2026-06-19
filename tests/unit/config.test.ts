@@ -23,6 +23,17 @@ include:
     expect(() => parseConfig("include: [\"**/*.md\"]")).toThrow(/remoteFolderToken/);
   });
 
+  it("rejects whitespace-only remote folder token", () => {
+    expect(() => parseConfig("remoteFolderToken: '   '")).toThrow(/remoteFolderToken/);
+  });
+
+  it("rejects unknown config keys", () => {
+    expect(() => parseConfig(`
+remoteFolderTokn: fld_token
+remoteFolderToken: fld_token
+`)).toThrow(/remoteFolderTokn/);
+  });
+
   it("exposes a safe default config", () => {
     expect(defaultConfig.include).toEqual(["**/*.md"]);
     expect(defaultConfig.overwritePolicy).toBe("explicit-only");
