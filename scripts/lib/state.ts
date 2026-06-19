@@ -39,8 +39,11 @@ export function emptyState(remoteFolderToken: string, remoteFolderUrl?: string):
 export async function loadState(path: string, remoteFolderToken: string): Promise<GitYourLarkState> {
   try {
     return await readJson<GitYourLarkState>(path);
-  } catch {
-    return emptyState(remoteFolderToken);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return emptyState(remoteFolderToken);
+    }
+    throw error;
   }
 }
 

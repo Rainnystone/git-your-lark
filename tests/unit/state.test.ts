@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -44,5 +44,14 @@ describe("state persistence", () => {
     await saveState(statePath, state);
 
     await expect(loadState(statePath, "fld_remote")).resolves.toEqual(state);
+  });
+
+  it("throws when the state file contains invalid JSON", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-state-"));
+    const statePath = join(workspaceRoot, ".git-your-lark", "state.json");
+    await mkdir(join(workspaceRoot, ".git-your-lark"), { recursive: true });
+    await writeFile(statePath, "{not valid json", "utf8");
+
+    await expect(loadState(statePath, "fld_remote")).rejects.toThrow();
   });
 });
