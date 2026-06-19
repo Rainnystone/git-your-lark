@@ -9,7 +9,7 @@ export interface MarkdownAttachment {
 }
 
 export function stripCodeForParsing(markdown: string): string {
-  return stripInlineCode(stripFencedCode(markdown));
+  return stripInlineCode(stripFencedCode(stripIndentedCode(markdown)));
 }
 
 export function parseMarkdownReferences(markdown: string): MarkdownReference[] {
@@ -67,7 +67,7 @@ function normalizeWikiTarget(value: string): string {
 function normalizeMarkdownTarget(value: string): string | undefined {
   const trimmed = value.trim();
   const withoutTitle = trimmed.startsWith("<") && trimmed.includes(">") ? trimmed.slice(1, trimmed.indexOf(">")) : trimmed;
-  const target = withoutTitle.split("#", 1)[0].trim();
+  const target = stripMarkdownTitle(withoutTitle).split("#", 1)[0].trim();
   return isLocalTarget(target) ? target : undefined;
 }
 
@@ -115,6 +115,24 @@ function isClosingFence(line: string, fence: { marker: "`" | "~"; length: number
 
 function stripInlineCode(markdown: string): string {
   return markdown.replace(/`[^`\n]*`/g, (match) => " ".repeat(match.length));
+}
+
+function stripIndentedCode(markdown: string): string {
+  return markdown.replace(/^(?: {4}|\t).*(?:\n|$)/gm, (match) => " ".repeat(match.length));
+}
+
+function stripMarkdownTitle(destination: string): string {
+  const quotedTitle = destination.match(/^(.+?\.md)\s+(?:"[^"]*"|'[^']*')\s*$/i);
+  if (quotedTitle) {
+    return quotedTitle[1];
+  }
+
+  const parenthesizedTitle = destination.match(/^(.+?\.md)\s+\([^()]*\)\s*$/i);
+  if (parenthesizedTitle) {
+    return parenthesizedTitle[1];
+  }
+
+  return destination;
 }
 
 interface InlineLink {

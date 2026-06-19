@@ -30,6 +30,30 @@ Ignore [[code_block]]
 
     expect(refs.map((ref) => ref.target)).toEqual(["My Doc.md"]);
   });
+
+  it("ignores wiki links inside 4-space indented code blocks", () => {
+    const refs = parseMarkdownReferences("    [[indented_code]]\n[[real]]");
+
+    expect(refs.map((ref) => ref.target)).toEqual(["real"]);
+  });
+
+  it("parses markdown links with quoted title syntax", () => {
+    const refs = parseMarkdownReferences(`[Doc](foo.md "Title")`);
+
+    expect(refs.map((ref) => ref.target)).toEqual(["foo.md"]);
+  });
+
+  it("parses markdown links with single-quoted title syntax", () => {
+    const refs = parseMarkdownReferences("[Doc](foo.md 'Title')");
+
+    expect(refs.map((ref) => ref.target)).toEqual(["foo.md"]);
+  });
+
+  it("parses markdown links with parenthesized title syntax", () => {
+    const refs = parseMarkdownReferences("[Doc](foo.md (Title))");
+
+    expect(refs.map((ref) => ref.target)).toEqual(["foo.md"]);
+  });
 });
 
 describe("parseMarkdownAttachments", () => {
