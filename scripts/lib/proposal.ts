@@ -54,7 +54,7 @@ export function buildProposal(input: BuildProposalInput): SyncProposal {
 
   for (const document of input.local.documents) {
     for (const reference of document.references) {
-      if (!resolvesLocalReference(reference.target, document.path, localTargets)) {
+      if (!resolvesLocalReference(reference, document.path, localTargets)) {
         blockers.push(`Unresolved reference in ${document.path}: ${reference.target}`);
       }
     }
@@ -175,12 +175,33 @@ function findRemoteDocumentByLocalTitle(
   return remoteByName.get(document.title) ?? remoteByName.get(document.stem) ?? remoteByName.get(stripMarkdownExtension(document.path));
 }
 
-function resolvesLocalReference(target: string, ownerPath: string, localTargets: Set<string>): boolean {
+function resolvesLocalReference(
+  reference: LocalDocument["references"][number],
+  ownerPath: string,
+  localTargets: Set<string>
+): boolean {
+  if (isMarkdownLinkReference(reference.raw)) {
+    return resolvesMarkdownRelativeReference(reference.target, ownerPath, localTargets);
+  }
+
+  return resolvesLooseLocalReference(reference.target, ownerPath, localTargets);
+}
+
+function resolvesMarkdownRelativeReference(target: string, ownerPath: string, localTargets: Set<string>): boolean {
+  const relativeTarget = normalizePath(posix.join(posix.dirname(ownerPath), target));
+  return localTargets.has(relativeTarget) || localTargets.has(stripMarkdownExtension(relativeTarget));
+}
+
+function resolvesLooseLocalReference(target: string, ownerPath: string, localTargets: Set<string>): boolean {
   if (localTargets.has(target)) {
     return true;
   }
   const relativeTarget = normalizePath(posix.join(posix.dirname(ownerPath), target));
   return localTargets.has(relativeTarget) || localTargets.has(stripMarkdownExtension(relativeTarget));
+}
+
+function isMarkdownLinkReference(raw: string): boolean {
+  return !raw.startsWith("[[");
 }
 
 function renderAction(action: ProposalAction): string {

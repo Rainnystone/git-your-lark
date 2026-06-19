@@ -142,6 +142,24 @@ describe("buildProposal", () => {
     expect(proposal.actions.map((action) => action.kind)).toEqual(["create-document", "create-document"]);
   });
 
+  it("blocks relative markdown references that only match a basename outside the owner document directory", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [
+          localDocument({
+            path: "docs/a.md",
+            references: [{ target: "b.md", raw: "[B](b.md)" }]
+          }),
+          localDocument({ path: "b.md" })
+        ]
+      }),
+      remote: remoteManifest(),
+      state: state()
+    });
+
+    expect(proposal.blockers).toEqual(["Unresolved reference in docs/a.md: b.md"]);
+  });
+
   it("blocks missing attachments", () => {
     const proposal = buildProposal({
       local: localManifest({
