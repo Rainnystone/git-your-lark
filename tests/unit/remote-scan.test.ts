@@ -4,9 +4,9 @@ import type { CommandResult } from "../../scripts/lib/lark-cli.js";
 
 describe("scanRemoteFolder", () => {
   it("scans all remote pages and maps Lark modified_time", async () => {
-    const calls: string[][] = [];
-    const run = async (_command: string, args: string[]): Promise<CommandResult> => {
-      calls.push(args);
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const run = async (command: string, args: string[]): Promise<CommandResult> => {
+      calls.push({ command, args });
       const params = JSON.parse(args[args.indexOf("--params") + 1]) as { page_token?: string };
 
       if (!params.page_token) {
@@ -53,7 +53,8 @@ describe("scanRemoteFolder", () => {
     const manifest = await scanRemoteFolder("fld_remote", run);
 
     expect(calls).toHaveLength(2);
-    expect(calls[0]).toEqual([
+    expect(calls[0]?.command).toBe("lark-cli");
+    expect(calls[0]?.args).toEqual([
       "drive",
       "files",
       "list",
@@ -64,7 +65,10 @@ describe("scanRemoteFolder", () => {
       "--format",
       "json"
     ]);
-    expect(JSON.parse(calls[1]?.[calls[1].indexOf("--params") + 1] ?? "{}")).toMatchObject({
+    expect(calls[1]?.command).toBe("lark-cli");
+    const secondArgs = calls[1]?.args ?? [];
+    expect(secondArgs.slice(0, 6)).toEqual(["drive", "files", "list", "--as", "user", "--params"]);
+    expect(JSON.parse(secondArgs[secondArgs.indexOf("--params") + 1] ?? "{}")).toMatchObject({
       folder_token: "fld_remote",
       page_size: 200,
       page_token: "next-page"
@@ -99,5 +103,32 @@ describe("scanRemoteFolder", () => {
     await expect(scanRemoteFolder("fld_remote", run)).rejects.toThrow(
       /lark-cli remote scan failed.*partial output.*permission denied/s
     );
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["blank", "   "]
+  ])("rejects when has_more is true but next_page_token is %s", async (_name, nextPageToken) => {
+    let calls = 0;
+    const run = async (): Promise<CommandResult> => ({
+      code: 0,
+      stdout: JSON.stringify({
+        data: {
+          files: [
+            {
+              name: "001_doc",
+              token: "doc_1",
+              type: "docx"
+            }
+          ],
+          has_more: calls++ === 0,
+          ...(calls === 1 && nextPageToken !== undefined ? { next_page_token: nextPageToken } : {})
+        }
+      }),
+      stderr: ""
+    });
+
+    await expect(scanRemoteFolder("fld_remote", run)).rejects.toThrow(/missing next_page_token/i);
   });
 });

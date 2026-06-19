@@ -54,4 +54,18 @@ describe("state persistence", () => {
 
     await expect(loadState(statePath, "fld_remote")).rejects.toThrow();
   });
+
+  it.each([
+    ["empty object", {}],
+    ["array", []],
+    ["unsupported version", { version: 2, remoteFolderToken: "fld_remote", documents: {}, attachments: {} }],
+    ["null documents", { version: 1, remoteFolderToken: "fld_remote", documents: null, attachments: {} }]
+  ])("throws when the state file has invalid shape: %s", async (_name, value) => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-state-"));
+    const statePath = join(workspaceRoot, ".git-your-lark", "state.json");
+    await mkdir(join(workspaceRoot, ".git-your-lark"), { recursive: true });
+    await writeFile(statePath, JSON.stringify(value), "utf8");
+
+    await expect(loadState(statePath, "fld_remote")).rejects.toThrow(/Invalid git-your-lark state/);
+  });
 });

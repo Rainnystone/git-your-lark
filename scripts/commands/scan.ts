@@ -1,9 +1,9 @@
 import { dirname, join, resolve } from "node:path";
 import { parseConfig } from "../lib/config.js";
 import { readUtf8, writeJson } from "../lib/fs-utils.js";
-import { scanLocalWorkspace, type LocalManifest } from "../lib/local-scan.js";
-import { scanRemoteFolder, type RemoteManifest } from "../lib/remote-scan.js";
-import { loadState, type GitYourLarkState } from "../lib/state.js";
+import { scanLocalWorkspace as defaultScanLocalWorkspace, type LocalManifest, type LocalScanInput } from "../lib/local-scan.js";
+import { scanRemoteFolder as defaultScanRemoteFolder, type RemoteManifest } from "../lib/remote-scan.js";
+import { loadState as defaultLoadState, type GitYourLarkState } from "../lib/state.js";
 
 export interface ScanManifest {
   local: LocalManifest;
@@ -11,7 +11,16 @@ export interface ScanManifest {
   state: GitYourLarkState;
 }
 
-export async function scanCommand(configPath: string): Promise<number> {
+export interface ScanCommandDependencies {
+  scanLocalWorkspace?: (input: LocalScanInput) => Promise<LocalManifest>;
+  scanRemoteFolder?: (folderToken: string) => Promise<RemoteManifest>;
+  loadState?: (path: string, remoteFolderToken: string) => Promise<GitYourLarkState>;
+}
+
+export async function scanCommand(configPath: string, dependencies: ScanCommandDependencies = {}): Promise<number> {
+  const scanLocalWorkspace = dependencies.scanLocalWorkspace ?? defaultScanLocalWorkspace;
+  const scanRemoteFolder = dependencies.scanRemoteFolder ?? defaultScanRemoteFolder;
+  const loadState = dependencies.loadState ?? defaultLoadState;
   const resolvedConfigPath = resolve(configPath);
   const configDir = dirname(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));

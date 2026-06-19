@@ -50,7 +50,14 @@ export async function scanRemoteFolder(folderToken: string, run: CommandRunner =
 
     const page = extractListPage(extractJson(result.stdout));
     entries.push(...(page.files ?? page.items ?? []).map(toRemoteEntry));
-    pageToken = page.has_more ? page.next_page_token : undefined;
+    if (page.has_more) {
+      if (!page.next_page_token?.trim()) {
+        throw new Error("lark-cli remote scan failed: missing next_page_token while has_more is true.");
+      }
+      pageToken = page.next_page_token;
+    } else {
+      pageToken = undefined;
+    }
   } while (pageToken);
 
   return {
