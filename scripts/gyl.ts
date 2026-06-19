@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { proposalCommand } from "./commands/proposal.js";
 import { scanCommand } from "./commands/scan.js";
 
 const program = new Command();
@@ -48,6 +49,14 @@ program
   .description("Scan local and remote workspace state.")
   .action(async (options) => {
     process.exitCode = await scanCommand(options.config);
+  });
+
+program
+  .command("proposal")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Generate a reviewable sync proposal.")
+  .action(async (options) => {
+    process.exitCode = await proposalCommand(options.config);
   });
 
 await program.parseAsync(process.argv);
