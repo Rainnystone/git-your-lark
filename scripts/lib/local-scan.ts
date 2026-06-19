@@ -13,8 +13,10 @@ export interface LocalScanInput {
 export interface LocalDocument {
   path: string;
   title: string;
+  stem: string;
   hash: string;
   references: MarkdownReference[];
+  attachments: LocalAttachment[];
 }
 
 export interface LocalAttachment {
@@ -47,24 +49,30 @@ export async function scanLocalWorkspace(input: LocalScanInput): Promise<LocalMa
     const absoluteDocumentPath = join(workspaceRoot, normalizedDocumentPath);
     const content = await readFile(absoluteDocumentPath, "utf8");
     const references = parseMarkdownReferences(content);
-
-    documents.push({
-      path: normalizedDocumentPath,
-      title: stem(normalizedDocumentPath),
-      hash: sha256Text(content),
-      references
-    });
+    const documentAttachments: LocalAttachment[] = [];
 
     for (const attachment of parseMarkdownAttachments(content)) {
       const attachmentPath = normalizePath(relative(workspaceRoot, resolve(dirname(absoluteDocumentPath), attachment.target)));
+      const localAttachment = {
+        path: attachmentPath,
+        hash: await hashAttachment(join(workspaceRoot, attachmentPath)),
+        owner: normalizedDocumentPath
+      };
+      documentAttachments.push(localAttachment);
       if (!attachments.has(attachmentPath)) {
-        attachments.set(attachmentPath, {
-          path: attachmentPath,
-          hash: await hashAttachment(join(workspaceRoot, attachmentPath)),
-          owner: normalizedDocumentPath
-        });
+        attachments.set(attachmentPath, localAttachment);
       }
     }
+
+    const documentStem = stem(normalizedDocumentPath);
+    documents.push({
+      path: normalizedDocumentPath,
+      title: documentStem,
+      stem: documentStem,
+      hash: sha256Text(content),
+      references,
+      attachments: documentAttachments
+    });
   }
 
   return {

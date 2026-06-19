@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scanLocalWorkspace } from "../../scripts/lib/local-scan.js";
 
@@ -10,7 +13,52 @@ describe("scanLocalWorkspace", () => {
     });
 
     expect(manifest.documents.map((doc) => doc.path).sort()).toEqual(["000_index.md", "001_doc.md"]);
-    expect(manifest.documents.find((doc) => doc.path === "000_index.md")?.references).toHaveLength(1);
+    const indexDocument = manifest.documents.find((doc) => doc.path === "000_index.md");
+    expect(indexDocument).toMatchObject({
+      path: "000_index.md",
+      stem: "000_index",
+      title: "000_index"
+    });
+    expect(indexDocument?.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(indexDocument?.references).toHaveLength(1);
+    expect(indexDocument?.attachments.map((att) => att.path)).toEqual(["assets/diagram.png"]);
     expect(manifest.attachments.map((att) => att.path)).toEqual(["assets/diagram.png"]);
+  });
+
+  it("applies exclude patterns", async () => {
+    const manifest = await scanLocalWorkspace({
+      workspaceRoot: "tests/fixtures/basic-workspace",
+      include: ["**/*.md"],
+      exclude: ["001_doc.md"]
+    });
+
+    expect(manifest.documents.map((doc) => doc.path)).toEqual(["000_index.md"]);
+  });
+
+  it("includes missing referenced attachments with missing hash", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-local-scan-"));
+    await mkdir(join(workspaceRoot, "docs"), { recursive: true });
+    await writeFile(join(workspaceRoot, "docs", "note.md"), "![Missing](../assets/missing.png)\n", "utf8");
+
+    const manifest = await scanLocalWorkspace({
+      workspaceRoot,
+      include: ["**/*.md"],
+      exclude: []
+    });
+
+    expect(manifest.documents[0]?.attachments).toEqual([
+      {
+        path: "assets/missing.png",
+        hash: "missing",
+        owner: "docs/note.md"
+      }
+    ]);
+    expect(manifest.attachments).toEqual([
+      {
+        path: "assets/missing.png",
+        hash: "missing",
+        owner: "docs/note.md"
+      }
+    ]);
   });
 });
