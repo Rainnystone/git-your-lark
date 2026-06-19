@@ -34,6 +34,14 @@ remoteFolderToken: fld_token
 `)).toThrow(/remoteFolderTokn/);
   });
 
+  it("rejects unknown nested rate limit keys", () => {
+    expect(() => parseConfig(`
+remoteFolderToken: fld
+rateLimit:
+  typo: 1
+`)).toThrow(/typo/);
+  });
+
   it("exposes a safe default config", () => {
     expect(defaultConfig.include).toEqual(["**/*.md"]);
     expect(defaultConfig.overwritePolicy).toBe("explicit-only");

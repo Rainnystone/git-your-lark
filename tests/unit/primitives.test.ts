@@ -3,12 +3,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readJson, readUtf8, writeJson, writeUtf8 } from "../../scripts/lib/fs-utils.js";
-import { sha256Text } from "../../scripts/lib/hash.js";
+import { sha256Buffer, sha256Text } from "../../scripts/lib/hash.js";
 import { emptyState } from "../../scripts/lib/state.js";
 
 describe("hash primitives", () => {
   it("hashes text with SHA-256", () => {
     expect(sha256Text("hello")).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+  });
+
+  it("hashes buffers with SHA-256", () => {
+    expect(sha256Buffer(Buffer.from("hello"))).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
   });
 });
 

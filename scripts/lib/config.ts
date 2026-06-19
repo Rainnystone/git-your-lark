@@ -21,7 +21,7 @@ export const ConfigSchema = z.object({
   rateLimit: z.object({
     writeDelayMs: z.number().int().min(0).default(5000),
     retries: z.number().int().min(0).default(4)
-  }).default({})
+  }).strict().default({})
 }).strict();
 
 export type GitYourLarkConfig = z.infer<typeof ConfigSchema>;
