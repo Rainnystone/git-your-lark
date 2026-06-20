@@ -2,7 +2,7 @@
 
 中文 | [English](./README.md)
 
-Git Your Lark 是一个 Codex plugin 和 agent skill，用来把本地 Markdown 或 Obsidian 工作区发布到飞书 / Lark 云文档。它使用官方 `lark-cli`，把 Markdown 转成飞书 docx 文档，而不是把 `.md` 当普通文件传上去；本地文档之间的链接也会尽量变成飞书里能点击跳转的文档引用。
+Git Your Lark 是一个 Codex 和 Claude Code 都能用的 plugin 和 agent skill，用来把本地 Markdown 或 Obsidian 工作区发布到飞书 / Lark 云文档。它使用官方 `lark-cli`，把 Markdown 转成飞书 docx 文档，而不是把 `.md` 当普通文件传上去；本地文档之间的链接也会尽量变成飞书里能点击跳转的文档引用。
 
 如果你在找一个 AI agent 可以用的飞书同步工具，想把 Obsidian 笔记、Markdown 文档库、本地 docs 文件夹发布到飞书，这个 repo 就是为这个场景做的。
 
@@ -92,9 +92,10 @@ v1 的范围故意收得比较窄。
 - publish / apply / merge 命令
 - 发布后验证
 - Codex skill 使用说明
+- Claude Code plugin 支持（marketplace 安装）
 - `gyl` CLI 的打包检查
 
-它已经可以作为本地工具使用，也可以准备上传 GitHub。后续如果要做 marketplace 或 npm 发布，可以在这个基础上继续。
+它已经可以作为本地工具使用，也可以准备上传 GitHub。Claude Code 用户可以直接从 plugin marketplace 安装；Codex 和 npm 的工作流也继续支持。
 
 ## 依赖
 
@@ -103,6 +104,24 @@ v1 的范围故意收得比较窄。
 - 已通过 `lark-cli auth login` 授权的飞书 / Lark 账号
 
 Git Your Lark 不会自动安装或升级 `lark-cli`。它会检查依赖，并告诉 agent 缺什么。
+
+## 在 Claude Code 里安装
+
+Git Your Lark 也可以作为 Claude Code plugin 使用。在 Claude Code 里运行：
+
+```text
+/plugin marketplace add Rainnystone/git-your-lark
+/plugin install git-your-lark
+/reload-plugins
+```
+
+然后用自然语言触发：
+
+```text
+用 Git Your Lark 把这个 Markdown 工作区同步到飞书。
+```
+
+`gyl` CLI 已经打包进 plugin，不需要单独 `npm install`。你仍然需要先授权官方 `lark-cli`（见依赖）。
 
 ## 从源码安装
 
@@ -223,6 +242,11 @@ Git Your Lark 是一层很薄的 TypeScript 封装，真正访问飞书的是 `l
 ```text
 .codex-plugin/
   plugin.json
+.claude-plugin/
+  plugin.json
+  marketplace.json
+bin/
+  gyl
 skills/
   sync-workspace/
     SKILL.md

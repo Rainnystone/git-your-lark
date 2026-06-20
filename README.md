@@ -2,7 +2,7 @@
 
 [中文](./README.zh-CN.md) | English
 
-Git Your Lark is a Codex plugin and agent skill for publishing a local Markdown or Obsidian workspace to Lark / Feishu Docs. It uses the official `lark-cli`, creates Lark docx documents instead of uploading raw `.md` files, keeps local document links clickable in Lark, and asks for a reviewable preview before it writes anything.
+Git Your Lark is a Codex and Claude Code plugin and agent skill for publishing a local Markdown or Obsidian workspace to Lark / Feishu Docs. It uses the official `lark-cli`, creates Lark docx documents instead of uploading raw `.md` files, keeps local document links clickable in Lark, and asks for a reviewable preview before it writes anything.
 
 If you are looking for an AI agent tool to sync Markdown to Lark, publish Obsidian notes to Feishu Docs, or keep a Lark workspace aligned with local docs, this is the repo.
 
@@ -90,9 +90,10 @@ This repository contains the first working v1 implementation. The core flow is i
 - publish / apply / merge command aliases
 - verification after publish
 - Codex skill UX
+- Claude Code plugin support (marketplace install)
 - package validation for the `gyl` CLI
 
-The project is ready for local use and GitHub publishing. Marketplace or npm distribution can be added later.
+The project is ready for local use and GitHub publishing. Claude Code users can install it directly from the plugin marketplace; Codex and npm-based workflows are also supported.
 
 ## Requirements
 
@@ -101,6 +102,24 @@ The project is ready for local use and GitHub publishing. Marketplace or npm dis
 - A Lark / Feishu account authorized with `lark-cli auth login`
 
 Git Your Lark does not install or upgrade `lark-cli` for you. It checks the dependency and tells the agent what is missing.
+
+## Install in Claude Code
+
+Git Your Lark also ships as a Claude Code plugin. In Claude Code, run:
+
+```text
+/plugin marketplace add Rainnystone/git-your-lark
+/plugin install git-your-lark
+/reload-plugins
+```
+
+Then ask in plain language:
+
+```text
+Sync this Markdown workspace to Lark using Git Your Lark.
+```
+
+The `gyl` CLI is bundled with the plugin, so no separate `npm install` is needed. You still need the official `lark-cli` authorized (see Requirements).
 
 ## Install from source
 
@@ -221,6 +240,11 @@ Local Markdown is the source of truth. Remote Lark documents are checked before 
 ```text
 .codex-plugin/
   plugin.json
+.claude-plugin/
+  plugin.json
+  marketplace.json
+bin/
+  gyl
 skills/
   sync-workspace/
     SKILL.md
