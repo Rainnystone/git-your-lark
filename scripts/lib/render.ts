@@ -115,11 +115,12 @@ function renderReferenceText(
     if (markdownLink) {
       const markdownTarget = normalizeMarkdownTarget(markdownLink.destination);
       if (!markdownLink.image && markdownTarget?.toLowerCase().endsWith(".md")) {
-        const resolved = resolveMarkdownReference(markdownTarget, input.sourcePath, input.referenceMap);
+        const normalizedTarget = normalizeMarkdownReferencePath(markdownTarget, input.sourcePath);
+        const resolved = resolveMarkdownReference(normalizedTarget, input.referenceMap);
         if (resolved) {
           result += renderResolvedReference(resolved, markdownLink.label);
         } else {
-          addUnresolved(markdownTarget);
+          addUnresolved(normalizedTarget);
           result += markdownLink.raw;
         }
       } else {
@@ -201,12 +202,17 @@ function resolveWikiReference(
 }
 
 function resolveMarkdownReference(
-  target: string,
-  sourcePath: string,
+  resolvedPath: string,
   referenceMap: Record<string, ReferenceTarget>
 ): ReferenceTarget | undefined {
-  const resolvedPath = normalizePath(posix.join(posix.dirname(sourcePath), target));
   return firstMappedReference([resolvedPath, stripMarkdownExtension(resolvedPath)], referenceMap);
+}
+
+function normalizeMarkdownReferencePath(target: string, sourcePath: string): string {
+  if (target.startsWith("/")) {
+    return normalizePath(target.slice(1));
+  }
+  return normalizePath(posix.join(posix.dirname(sourcePath), target));
 }
 
 function wikiReferenceCandidates(target: string, sourcePath: string): string[] {

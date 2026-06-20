@@ -68,6 +68,18 @@ describe("renderMarkdownForLark", () => {
     expect(result.unresolved).toEqual([]);
   });
 
+  it("resolves root-relative markdown links from the workspace root", () => {
+    const result = renderMarkdownForLark({
+      markdown: "Root [B](/b.md).",
+      sourcePath: "docs/a.md",
+      referenceMap: references,
+      mode: "lark-doc-cite"
+    });
+
+    expect(result.content).toBe('Root <cite type="doc" doc-id="root_token"></cite>.');
+    expect(result.unresolved).toEqual([]);
+  });
+
   it("preserves external, image, non-md, and heading-only links", () => {
     const markdown = [
       "[Web](https://example.test)",
@@ -131,6 +143,20 @@ describe("renderMarkdownForLark", () => {
 
     expect(result.content).toBe("Missing [[missing_doc]] and again [[missing_doc]]. Also [Missing](missing.md).");
     expect(result.unresolved).toEqual(["missing_doc", "missing.md"]);
+  });
+
+  it("deduplicates unresolved markdown links by normalized target", () => {
+    const markdown = "[Missing](b.md) and [Again](./b.md).";
+
+    const result = renderMarkdownForLark({
+      markdown,
+      sourcePath: "docs/a.md",
+      referenceMap: {},
+      mode: "url-link"
+    });
+
+    expect(result.content).toBe(markdown);
+    expect(result.unresolved).toEqual(["docs/b.md"]);
   });
 });
 
