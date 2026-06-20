@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Command } from "commander";
 import { applyCommand } from "./commands/apply.js";
 import { doctorCommand } from "./commands/doctor.js";

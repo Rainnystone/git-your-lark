@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+import { build } from "esbuild";
+import { chmodSync } from "node:fs";
+
+// The bundle is emitted as ESM (format: "esm") into an extensionless
+// `bin/gyl` that lives under a package.json declaring `"type": "module"`,
+// so Node loads it as an ES module. Several runtime dependencies (e.g.
+// commander) are CommonJS and call `require("node:...")`; Node's ESM
+// loader rejects those dynamic requires. We therefore prepend a tiny
+// `createRequire` shim alongside the shebang so esbuild's generated
+// `__require` wrapper resolves node built-ins at runtime. This is the
+// canonical fix documented at https://dev.to/marcogrcr/nodejs-and-esbuild-beware-of-mixing-cjs-and-esm-493n
+// and keeps the bundle a single self-contained executable file.
+const bannerJs = [
+  "#!/usr/bin/env node",
+  "import { createRequire as __gylCreateRequire } from \"node:module\";",
+  "const require = __gylCreateRequire(import.meta.url);"
+].join("\n");
+
+const result = await build({
+  entryPoints: ["scripts/gyl.ts"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "node20",
+  outfile: "bin/gyl",
+  banner: { js: bannerJs },
+  legalComments: "none",
+  logLevel: "info"
+});
+
+if (result.errors && result.errors.length > 0) {
+  process.exit(1);
+}
+
+chmodSync("bin/gyl", 0o755);
+console.log("bundled bin/gyl (executable)");

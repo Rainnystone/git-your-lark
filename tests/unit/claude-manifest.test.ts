@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { validateClaudePlugin } from "../../scripts/claude-manifest.mjs";
@@ -33,7 +33,25 @@ describe("validateClaudePlugin (manifests)", () => {
   it("returns no errors for valid manifests", () => {
     writePlugin();
     writeMarket();
+    mkdirSync(join(root, "bin"), { recursive: true });
+    writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
+    chmodSync(join(root, "bin", "gyl"), 0o755);
     expect(validateClaudePlugin(root)).toEqual([]);
+  });
+
+  it("reports missing bin/gyl", () => {
+    writePlugin();
+    writeMarket();
+    expect(validateClaudePlugin(root).some((e) => e.includes("bin/gyl"))).toBe(true);
+  });
+
+  it("reports non-executable bin/gyl", () => {
+    writePlugin();
+    writeMarket();
+    mkdirSync(join(root, "bin"), { recursive: true });
+    writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
+    chmodSync(join(root, "bin", "gyl"), 0o644);
+    expect(validateClaudePlugin(root).some((e) => e.includes("not executable"))).toBe(true);
   });
 
   it("reports missing plugin.json", () => {

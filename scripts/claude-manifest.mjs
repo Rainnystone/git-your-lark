@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const REQUIRED_PLUGIN_FIELDS = ["name", "description", "version"];
@@ -52,6 +52,16 @@ export function validateClaudePlugin(rootDir) {
       } else if (!entry.source) {
         errors.push(".claude-plugin/marketplace.json git-your-lark entry missing field: source");
       }
+    }
+  }
+
+  const binGylPath = join(rootDir, "bin", "gyl");
+  if (!existsSync(binGylPath)) {
+    errors.push(`missing ${binGylPath}`);
+  } else {
+    const mode = statSync(binGylPath).mode & 0o777;
+    if (!(mode & 0o111)) {
+      errors.push(`${binGylPath} is not executable (run: npm run build:bundle)`);
     }
   }
 
