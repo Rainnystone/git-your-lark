@@ -1,3 +1,5 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { parseConfig, type GitYourLarkConfig } from "./config.js";
 import { readJson, readUtf8, writeJson } from "./fs-utils.js";
@@ -54,6 +56,8 @@ interface ApplyJournalEvent {
   action?: ProposalAction;
   message?: string;
   problems?: string[];
+  createdToken?: string;
+  remoteToken?: string;
 }
 
 interface RemoteDocumentResult {
@@ -150,6 +154,11 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
 
   const configDir = dirname(configPath);
   const config = parseConfig(await readUtf8(configPath));
+  if (proposal.baseRemoteFolderToken !== config.remoteFolderToken) {
+    const problem = `Proposal base remote folder token ${proposal.baseRemoteFolderToken} does not match config remote folder token ${config.remoteFolderToken}`;
+    await record("folder-token-mismatch", { problems: [problem] }, "failed");
+    return { ok: false, status: "failed", problems: [problem], journalPath };
+  }
   const workspaceRoot = resolve(configDir, config.workspaceRoot);
   const statePath = resolve(workspaceRoot, config.statePath);
   const remote = await scanRemoteFolder(config.remoteFolderToken);
@@ -178,6 +187,11 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
             workspaceRoot,
             run: runner
           });
+          await record("create-placeholder", {
+            action,
+            createdToken: created.token,
+            message: `Created placeholder for ${action.path}: ${created.token}`
+          });
           state.documents[action.path] = {
             path: action.path,
             title: action.title,
@@ -188,7 +202,6 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
           };
           stateDirty = true;
           await persistState();
-          await record("create-placeholder", { action, message: `Created placeholder for ${action.path}` });
         }
         continue;
       }
@@ -205,11 +218,15 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
             referenceMap,
             run: runner
           });
+          await record("write-document", {
+            action,
+            remoteToken: written.token,
+            message: `Wrote document ${action.path}`
+          });
           state.documents[action.path] = written;
           state.lastAppliedProposalId = proposal.id;
           stateDirty = true;
           await persistState();
-          await record("write-document", { action, message: `Wrote document ${action.path}` });
         }
         continue;
       }
@@ -221,6 +238,11 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
           state,
           run: runner
         });
+        await record("insert-attachment", {
+          action,
+          ...(media.token ? { remoteToken: media.token } : {}),
+          message: `Inserted attachment ${action.path}`
+        });
         if (media.token) {
           state.attachments[action.path] = {
             localPath: action.path,
@@ -231,7 +253,6 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
           stateDirty = true;
           await persistState();
         }
-        await record("insert-attachment", { action, message: `Inserted attachment ${action.path}` });
       }
     }
 
@@ -241,12 +262,19 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
     await record("applied", {}, "applied");
     return { ok: true, status: "applied", problems: [], journalPath };
   } catch (error) {
+    const problems = [error instanceof Error ? error.message : String(error)];
     if (stateDirty) {
-      await persistState();
+      try {
+        await persistState();
+      } catch (saveError) {
+        const saveMessage = saveError instanceof Error ? saveError.message : String(saveError);
+        if (!problems.includes(saveMessage)) {
+          problems.push(saveMessage);
+        }
+      }
     }
-    const message = error instanceof Error ? error.message : String(error);
-    await record("failed", { problems: [message] }, "failed");
-    return { ok: false, status: "failed", problems: [message], journalPath };
+    await record("failed", { problems }, "failed");
+    return { ok: false, status: "failed", problems, journalPath };
   }
 }
 
@@ -262,22 +290,33 @@ async function createPlaceholderDocument(input: {
   workspaceRoot: string;
   run: ApplyRunner;
 }): Promise<RemoteDocumentResult> {
-  const result = await input.run(
-    "lark-cli",
-    [
-      "drive",
-      "+import",
-      "--type",
-      "docx",
-      "--folder-token",
-      input.config.remoteFolderToken,
-      "--name",
-      input.action.title
-    ],
-    input.workspaceRoot
-  );
-  assertCommandSucceeded("create placeholder document", result);
-  return parseDocumentResult(result.stdout);
+  const tempDir = await mkdtemp(join(tmpdir(), "gyl-placeholder-"));
+  try {
+    const placeholderPath = join(tempDir, "placeholder.md");
+    await writeFile(placeholderPath, `# ${input.action.title}\n`, "utf8");
+    const result = await input.run(
+      "lark-cli",
+      [
+        "drive",
+        "+import",
+        "--as",
+        "user",
+        "--file",
+        placeholderPath,
+        "--type",
+        "docx",
+        "--folder-token",
+        input.config.remoteFolderToken,
+        "--name",
+        input.action.title
+      ],
+      input.workspaceRoot
+    );
+    assertCommandSucceeded("create placeholder document", result);
+    return parseDocumentResult(result.stdout);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
 
 async function writeDocument(input: {
@@ -310,7 +349,22 @@ async function writeDocument(input: {
   if (input.action.kind === "create-document") {
     const result = await input.run(
       "lark-cli",
-      ["docs", "+update", "--token", token, "--command", "overwrite", "--content", rendered.content],
+      [
+        "docs",
+        "+update",
+        "--api-version",
+        "v2",
+        "--as",
+        "user",
+        "--doc",
+        token,
+        "--command",
+        "overwrite",
+        "--doc-format",
+        "markdown",
+        "--content",
+        rendered.content
+      ],
       input.workspaceRoot
     );
     assertCommandSucceeded(`write new document ${input.action.path}`, result);
@@ -324,13 +378,19 @@ async function writeDocument(input: {
         [
           "docs",
           "+update",
-          "--token",
+          "--api-version",
+          "v2",
+          "--as",
+          "user",
+          "--doc",
           token,
           "--command",
           "str_replace",
+          "--doc-format",
+          "markdown",
           "--pattern",
           plan.pattern,
-          "--replacement",
+          "--content",
           plan.replacement
         ],
         input.workspaceRoot
@@ -343,7 +403,22 @@ async function writeDocument(input: {
       }
       const result = await input.run(
         "lark-cli",
-        ["docs", "+update", "--token", token, "--command", "overwrite", "--content", rendered.content],
+        [
+          "docs",
+          "+update",
+          "--api-version",
+          "v2",
+          "--as",
+          "user",
+          "--doc",
+          token,
+          "--command",
+          "overwrite",
+          "--doc-format",
+          "markdown",
+          "--content",
+          rendered.content
+        ],
         input.workspaceRoot
       );
       assertCommandSucceeded(`overwrite document ${input.action.path}`, result);
@@ -364,7 +439,24 @@ async function writeDocument(input: {
 }
 
 async function fetchRemoteMarkdown(token: string, run: ApplyRunner, cwd: string): Promise<string> {
-  const result = await run("lark-cli", ["docs", "+fetch", "--token", token, "--format", "markdown"], cwd);
+  const result = await run(
+    "lark-cli",
+    [
+      "docs",
+      "+fetch",
+      "--api-version",
+      "v2",
+      "--as",
+      "user",
+      "--doc",
+      token,
+      "--doc-format",
+      "markdown",
+      "--format",
+      "json"
+    ],
+    cwd
+  );
   assertCommandSucceeded(`fetch remote markdown ${token}`, result);
   return parseFetchedMarkdown(result.stdout);
 }
@@ -384,10 +476,14 @@ async function insertAttachment(input: {
     [
       "docs",
       "+media-insert",
-      "--token",
+      "--as",
+      "user",
+      "--doc",
       owner.token,
       "--file",
-      resolve(input.workspaceRoot, input.action.path)
+      resolve(input.workspaceRoot, input.action.path),
+      "--type",
+      mediaInsertType(input.action.path)
     ],
     input.workspaceRoot
   );
@@ -473,11 +569,17 @@ function parseFetchedMarkdown(output: string): string {
   try {
     const root = extractJson(output) as Record<string, unknown>;
     const data = (root.data ?? root) as Record<string, unknown>;
-    const content = stringField(data, "markdown", "content", "text");
+    const nested = firstObject(data.document, data.doc, data.result) ?? data;
+    const content = stringField(nested, "markdown", "content", "text");
     return content ?? output;
   } catch {
     return output;
   }
+}
+
+function mediaInsertType(path: string): "image" | "file" {
+  const imageExtensions = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"]);
+  return imageExtensions.has(extname(path).toLowerCase()) ? "image" : "file";
 }
 
 function firstObject(...values: unknown[]): Record<string, unknown> | undefined {

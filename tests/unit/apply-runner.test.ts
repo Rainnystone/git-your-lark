@@ -134,9 +134,19 @@ describe("applyProposal", () => {
 
     expect(applyResult).toMatchObject({ ok: true, status: "applied" });
     expect(scanRemoteFolder).toHaveBeenCalledWith("fld_remote");
+    expect(calls[0].command).toBe("lark-cli");
+    expect(calls[0].cwd).toBe(workspaceRoot);
+    const fileIndex = calls[0].args.indexOf("--file");
+    expect(fileIndex).toBeGreaterThan(0);
+    const placeholderPath = calls[0].args[fileIndex + 1];
+    expect(placeholderPath).toMatch(/\.md$/);
     expect(calls[0].args).toEqual([
       "drive",
       "+import",
+      "--as",
+      "user",
+      "--file",
+      placeholderPath,
       "--type",
       "docx",
       "--folder-token",
@@ -144,10 +154,26 @@ describe("applyProposal", () => {
       "--name",
       "001_new"
     ]);
-    expect(calls[1].args).toContain("+update");
-    expect(calls[1].args).toContain("--command");
-    expect(calls[1].args).toContain("overwrite");
-    expect(calls[1].args).toContain("Hello new document.\n");
+    expect(calls[1]).toEqual({
+      command: "lark-cli",
+      cwd: workspaceRoot,
+      args: [
+        "docs",
+        "+update",
+        "--api-version",
+        "v2",
+        "--as",
+        "user",
+        "--doc",
+        "doc_new",
+        "--command",
+        "overwrite",
+        "--doc-format",
+        "markdown",
+        "--content",
+        "Hello new document.\n"
+      ]
+    });
     await expect(readJson<GitYourLarkState>(join(workspaceRoot, ".git-your-lark", "state.json"))).resolves.toMatchObject({
       documents: {
         "001_new.md": {
@@ -189,7 +215,7 @@ describe("applyProposal", () => {
     const run = vi.fn<ApplyRunner>(async (_command, args) => {
       calls.push({ args });
       if (args.includes("+fetch")) {
-        return result({ stdout: "before\nold\nafter\n" });
+        return result({ stdout: JSON.stringify({ data: { document: { content: "before\nold\nafter\n" } } }) });
       }
       return result();
     });
@@ -205,11 +231,39 @@ describe("applyProposal", () => {
     });
 
     expect(applyResult).toMatchObject({ ok: true, status: "applied" });
-    expect(calls[0].args).toEqual(["docs", "+fetch", "--token", "doc_index", "--format", "markdown"]);
-    expect(calls[1].args).toContain("+update");
-    expect(calls[1].args).toContain("str_replace");
-    expect(calls[1].args).toContain("old\n");
-    expect(calls[1].args).toContain("new\n");
+    expect(calls[0].args).toEqual([
+      "docs",
+      "+fetch",
+      "--api-version",
+      "v2",
+      "--as",
+      "user",
+      "--doc",
+      "doc_index",
+      "--doc-format",
+      "markdown",
+      "--format",
+      "json"
+    ]);
+    expect(calls[1].args).toEqual([
+      "docs",
+      "+update",
+      "--api-version",
+      "v2",
+      "--as",
+      "user",
+      "--doc",
+      "doc_index",
+      "--command",
+      "str_replace",
+      "--doc-format",
+      "markdown",
+      "--pattern",
+      "old\n",
+      "--content",
+      "new\n"
+    ]);
+    expect(calls[1].args).not.toContain("--replacement");
     await expect(readJson<GitYourLarkState>(join(workspaceRoot, ".git-your-lark", "state.json"))).resolves.toMatchObject({
       documents: {
         "000_index.md": {
@@ -223,6 +277,7 @@ describe("applyProposal", () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-apply-attachment-"));
     await mkdir(join(workspaceRoot, "assets"), { recursive: true });
     await writeFile(join(workspaceRoot, "assets", "diagram.png"), "fake image", "utf8");
+    await writeFile(join(workspaceRoot, "assets", "spec.pdf"), "fake file", "utf8");
     const configPath = await writeConfig(workspaceRoot, {
       state: state({
         documents: {
@@ -233,13 +288,17 @@ describe("applyProposal", () => {
     const proposalPath = await writeProposal(
       workspaceRoot,
       proposal({
-        actions: [uploadAttachmentAction({ path: "assets/diagram.png", hash: "hash-img", owner: "001_owner.md" })]
+        actions: [
+          uploadAttachmentAction({ path: "assets/diagram.png", hash: "hash-img", owner: "001_owner.md" }),
+          uploadAttachmentAction({ path: "assets/spec.pdf", hash: "hash-pdf", owner: "001_owner.md" })
+        ]
       })
     );
     const calls: string[][] = [];
     const run = vi.fn<ApplyRunner>(async (_command, args) => {
       calls.push(args);
-      return result({ stdout: JSON.stringify({ data: { token: "media_1", url: "https://example.test/media_1" } }) });
+      const token = `media_${calls.length}`;
+      return result({ stdout: JSON.stringify({ data: { token, url: `https://example.test/${token}` } }) });
     });
 
     const applyResult = await applyProposal({
@@ -253,10 +312,26 @@ describe("applyProposal", () => {
     expect(calls[0]).toEqual([
       "docs",
       "+media-insert",
-      "--token",
+      "--as",
+      "user",
+      "--doc",
       "doc_owner",
       "--file",
-      join(workspaceRoot, "assets", "diagram.png")
+      join(workspaceRoot, "assets", "diagram.png"),
+      "--type",
+      "image"
+    ]);
+    expect(calls[1]).toEqual([
+      "docs",
+      "+media-insert",
+      "--as",
+      "user",
+      "--doc",
+      "doc_owner",
+      "--file",
+      join(workspaceRoot, "assets", "spec.pdf"),
+      "--type",
+      "file"
     ]);
     await expect(readJson<GitYourLarkState>(join(workspaceRoot, ".git-your-lark", "state.json"))).resolves.toMatchObject({
       attachments: {
@@ -265,9 +340,90 @@ describe("applyProposal", () => {
           remoteToken: "media_1",
           remoteUrl: "https://example.test/media_1",
           hash: "hash-img"
+        },
+        "assets/spec.pdf": {
+          localPath: "assets/spec.pdf",
+          remoteToken: "media_2",
+          remoteUrl: "https://example.test/media_2",
+          hash: "hash-pdf"
         }
       }
     });
+  });
+
+  it("stops before scanning or running commands when proposal base folder differs from config", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-apply-folder-mismatch-"));
+    const configPath = await writeConfig(workspaceRoot);
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        baseRemoteFolderToken: "fld_stale",
+        actions: [createDocumentAction()]
+      })
+    );
+    const run = vi.fn<ApplyRunner>(async () => result());
+    const scanRemoteFolder = vi.fn(async () => remoteManifest());
+
+    const applyResult = await applyProposal({
+      proposalPath,
+      configPath,
+      run,
+      scanRemoteFolder
+    });
+
+    const problem = "Proposal base remote folder token fld_stale does not match config remote folder token fld_remote";
+    expect(applyResult).toMatchObject({ ok: false, status: "failed", problems: [problem] });
+    expect(scanRemoteFolder).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    await expect(readJson(applyResult.journalPath)).resolves.toMatchObject({
+      status: "failed",
+      events: [{ step: "folder-token-mismatch", problems: [problem] }]
+    });
+  });
+
+  it("journals a created placeholder side effect before reporting a state save failure", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-apply-save-failure-"));
+    const configPath = await writeConfig(workspaceRoot);
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        actions: [createDocumentAction({ path: "001_new.md", title: "001_new", hash: "hash-new" })]
+      })
+    );
+    const run = vi.fn<ApplyRunner>(async (_command, args) => {
+      if (args.includes("+import")) {
+        return result({ stdout: JSON.stringify({ data: { token: "doc_new", url: "https://example.test/doc_new" } }) });
+      }
+      return result();
+    });
+
+    const applyResult = await applyProposal({
+      proposalPath,
+      configPath,
+      run,
+      scanRemoteFolder: async () => remoteManifest(),
+      loadState: async () => state(),
+      saveState: async () => {
+        throw new Error("state store unavailable");
+      }
+    });
+
+    expect(applyResult).toMatchObject({ ok: false, status: "failed", problems: ["state store unavailable"] });
+    const journal = await readJson<{ status: string; events: Array<Record<string, unknown>> }>(applyResult.journalPath);
+    expect(journal.status).toBe("failed");
+    expect(journal.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          step: "create-placeholder",
+          action: expect.objectContaining({ kind: "create-document", path: "001_new.md" }),
+          createdToken: "doc_new"
+        }),
+        expect.objectContaining({
+          step: "failed",
+          problems: ["state store unavailable"]
+        })
+      ])
+    );
   });
 });
 
