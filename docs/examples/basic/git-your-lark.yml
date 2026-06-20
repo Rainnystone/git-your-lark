@@ -1,0 +1,19 @@
+workspaceRoot: .
+remoteFolderToken: fld_replace_with_lark_folder_token
+remoteFolderUrl: https://example.feishu.cn/drive/folder/fld_replace_with_lark_folder_token
+include:
+  - "**/*.md"
+exclude:
+  - "node_modules/**"
+  - ".git/**"
+  - ".git-your-lark/**"
+statePath: .git-your-lark/state.json
+proposalDir: .git-your-lark/proposals
+titleMode: stem
+referenceMode: lark-doc-cite
+attachmentPolicy: upload-supported
+conflictPolicy: stop
+overwritePolicy: explicit-only
+rateLimit:
+  writeDelayMs: 5000
+  retries: 4
