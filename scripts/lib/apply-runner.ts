@@ -37,6 +37,7 @@ export interface ApplyProposalOptions {
   proposalPath: string;
   configPath: string;
   run?: ApplyRunner;
+  sleep?: (ms: number) => Promise<void>;
   scanRemoteFolder?: (folderToken: string) => Promise<RemoteManifest>;
   loadState?: (path: string, remoteFolderToken: string) => Promise<GitYourLarkState>;
   saveState?: (path: string, state: GitYourLarkState) => Promise<void>;
@@ -119,6 +120,7 @@ export function analyzeRemoteConflicts(proposal: SyncProposal, remote: RemoteMan
 
 export async function applyProposal(options: ApplyProposalOptions): Promise<ApplyResult> {
   const runner = options.run ?? runCommand;
+  const sleep = options.sleep ?? defaultSleep;
   const scanRemoteFolder =
     options.scanRemoteFolder ?? ((folderToken: string): Promise<RemoteManifest> => defaultScanRemoteFolder(folderToken, runner));
   const loadState = options.loadState ?? defaultLoadState;
@@ -161,6 +163,13 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
   }
   const workspaceRoot = resolve(configDir, config.workspaceRoot);
   const statePath = resolve(workspaceRoot, config.statePath);
+  let hasRemoteWrite = false;
+  const beforeRemoteWrite = async (): Promise<void> => {
+    if (hasRemoteWrite && config.rateLimit.writeDelayMs > 0) {
+      await sleep(config.rateLimit.writeDelayMs);
+    }
+    hasRemoteWrite = true;
+  };
   const remote = await scanRemoteFolder(config.remoteFolderToken);
   const conflicts = analyzeRemoteConflicts(proposal, remote);
   if (conflicts.length > 0) {
@@ -185,6 +194,7 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
             action,
             config,
             workspaceRoot,
+            beforeRemoteWrite,
             run: runner
           });
           await record("create-placeholder", {
@@ -216,6 +226,7 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
             state,
             remoteEntry: action.kind === "patch-document" ? remoteByToken.get(action.token) : undefined,
             referenceMap,
+            beforeRemoteWrite,
             run: runner
           });
           await record("write-document", {
@@ -236,6 +247,7 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
           action,
           workspaceRoot,
           state,
+          beforeRemoteWrite,
           run: runner
         });
         await record("insert-attachment", {
@@ -284,16 +296,22 @@ function applyJournalPath(proposalPath: string): string {
   return join(dirname(proposalPath), `${stem}.apply-journal.json`);
 }
 
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function createPlaceholderDocument(input: {
   action: Extract<ProposalAction, { kind: "create-document" }>;
   config: GitYourLarkConfig;
   workspaceRoot: string;
+  beforeRemoteWrite: () => Promise<void>;
   run: ApplyRunner;
 }): Promise<RemoteDocumentResult> {
   const tempDir = await mkdtemp(join(tmpdir(), "gyl-placeholder-"));
   try {
     const placeholderPath = join(tempDir, "placeholder.md");
     await writeFile(placeholderPath, `# ${input.action.title}\n`, "utf8");
+    await input.beforeRemoteWrite();
     const result = await input.run(
       "lark-cli",
       [
@@ -326,6 +344,7 @@ async function writeDocument(input: {
   state: GitYourLarkState;
   remoteEntry?: RemoteEntry;
   referenceMap: Record<string, ReferenceTarget>;
+  beforeRemoteWrite: () => Promise<void>;
   run: ApplyRunner;
 }): Promise<RemoteDocumentState> {
   const existing = input.state.documents[input.action.path];
@@ -347,6 +366,7 @@ async function writeDocument(input: {
 
   let updatedModifiedTime: string | undefined;
   if (input.action.kind === "create-document") {
+    await input.beforeRemoteWrite();
     const result = await input.run(
       "lark-cli",
       [
@@ -373,6 +393,7 @@ async function writeDocument(input: {
     const remoteMarkdown = await fetchRemoteMarkdown(token, input.run, input.workspaceRoot);
     const plan = planMarkdownWrite(remoteMarkdown, rendered.content);
     if (plan.kind === "str-replace") {
+      await input.beforeRemoteWrite();
       const result = await input.run(
         "lark-cli",
         [
@@ -401,6 +422,7 @@ async function writeDocument(input: {
       if (input.config.overwritePolicy !== "allow") {
         throw new Error(`Overwrite required for ${input.action.path} but overwritePolicy is ${input.config.overwritePolicy}: ${plan.reason}`);
       }
+      await input.beforeRemoteWrite();
       const result = await input.run(
         "lark-cli",
         [
@@ -465,12 +487,14 @@ async function insertAttachment(input: {
   action: Extract<ProposalAction, { kind: "upload-attachment" }>;
   workspaceRoot: string;
   state: GitYourLarkState;
+  beforeRemoteWrite: () => Promise<void>;
   run: ApplyRunner;
 }): Promise<RemoteMediaResult> {
   const owner = input.state.documents[input.action.owner];
   if (!owner) {
     throw new Error(`Attachment owner is not available in state: ${input.action.owner}`);
   }
+  await input.beforeRemoteWrite();
   const result = await input.run(
     "lark-cli",
     [

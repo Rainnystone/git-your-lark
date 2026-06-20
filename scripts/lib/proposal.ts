@@ -38,11 +38,13 @@ export interface BuildProposalInput {
   local: LocalManifest;
   remote: RemoteManifest;
   state: GitYourLarkState;
+  attachmentPolicy?: "upload-supported" | "warn-only" | "block";
   now?: Date;
 }
 
 export function buildProposal(input: BuildProposalInput): SyncProposal {
   const createdAt = (input.now ?? new Date()).toISOString();
+  const attachmentPolicy = input.attachmentPolicy ?? "upload-supported";
   const localTargets = buildLocalTargetIndex(input.local.documents);
   const remoteDocuments = input.remote.entries.filter(isRemoteDocument);
   const remoteByToken = new Map(remoteDocuments.map((entry) => [entry.token, entry]));
@@ -100,6 +102,16 @@ export function buildProposal(input: BuildProposalInput): SyncProposal {
   for (const attachment of input.local.attachments) {
     if (attachment.hash === "missing") {
       blockers.push(`Missing attachment: ${attachment.path}`);
+      continue;
+    }
+
+    if (attachmentPolicy === "block") {
+      blockers.push(`Attachment blocked by attachmentPolicy=block: ${attachment.path}`);
+      continue;
+    }
+
+    if (attachmentPolicy === "warn-only") {
+      warnings.push(`Attachment not uploaded because attachmentPolicy=warn-only: ${attachment.path}`);
       continue;
     }
 

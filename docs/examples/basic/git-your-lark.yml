@@ -16,4 +16,3 @@ conflictPolicy: stop
 overwritePolicy: explicit-only
 rateLimit:
   writeDelayMs: 5000
-  retries: 4

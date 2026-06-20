@@ -35,6 +35,26 @@ describe("scanLocalWorkspace", () => {
     expect(manifest.documents.map((doc) => doc.path)).toEqual(["000_index.md"]);
   });
 
+  it("derives titles from normalized document paths when titleMode is path", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-local-scan-title-mode-"));
+    await mkdir(join(workspaceRoot, "docs", "deep"), { recursive: true });
+    await writeFile(join(workspaceRoot, "docs", "deep", "note.md"), "Nested note.\n", "utf8");
+
+    const manifest = await scanLocalWorkspace({
+      workspaceRoot,
+      include: ["**/*.md"],
+      exclude: [],
+      titleMode: "path"
+    });
+
+    expect(manifest.documents).toHaveLength(1);
+    expect(manifest.documents[0]).toMatchObject({
+      path: "docs/deep/note.md",
+      stem: "note",
+      title: "docs - deep - note"
+    });
+  });
+
   it("includes missing referenced attachments with missing hash", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-local-scan-"));
     await mkdir(join(workspaceRoot, "docs"), { recursive: true });

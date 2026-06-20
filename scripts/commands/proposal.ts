@@ -26,7 +26,8 @@ export async function proposalCommand(configPath: string, dependencies: Proposal
   const local = await scanLocalWorkspace({
     workspaceRoot,
     include: config.include,
-    exclude: config.exclude
+    exclude: config.exclude,
+    titleMode: config.titleMode
   });
   const remote = await scanRemoteFolder(config.remoteFolderToken);
   const state = await loadState(resolve(workspaceRoot, config.statePath), config.remoteFolderToken);
@@ -34,6 +35,7 @@ export async function proposalCommand(configPath: string, dependencies: Proposal
     local,
     remote,
     state,
+    attachmentPolicy: config.attachmentPolicy,
     now: now()
   });
   const proposalDir = resolve(workspaceRoot, config.proposalDir);

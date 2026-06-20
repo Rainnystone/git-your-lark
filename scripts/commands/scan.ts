@@ -29,7 +29,8 @@ export async function scanCommand(configPath: string, dependencies: ScanCommandD
   const local = await scanLocalWorkspace({
     workspaceRoot,
     include: config.include,
-    exclude: config.exclude
+    exclude: config.exclude,
+    titleMode: config.titleMode
   });
   const remote = await scanRemoteFolder(config.remoteFolderToken);
   const state = await loadState(resolve(workspaceRoot, config.statePath), config.remoteFolderToken);

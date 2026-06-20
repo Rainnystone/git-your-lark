@@ -8,6 +8,7 @@ export interface LocalScanInput {
   workspaceRoot: string;
   include: string[];
   exclude: string[];
+  titleMode?: "stem" | "path";
 }
 
 export interface LocalDocument {
@@ -69,7 +70,7 @@ export async function scanLocalWorkspace(input: LocalScanInput): Promise<LocalMa
     const documentStem = stem(normalizedDocumentPath);
     documents.push({
       path: normalizedDocumentPath,
-      title: documentStem,
+      title: titleForPath(normalizedDocumentPath, input.titleMode ?? "stem"),
       stem: documentStem,
       hash: sha256Text(content),
       references,
@@ -98,6 +99,17 @@ async function hashAttachment(path: string): Promise<string> {
 function stem(path: string): string {
   const filename = path.split("/").at(-1) ?? path;
   return filename.replace(/\.[^.]+$/, "");
+}
+
+function titleForPath(path: string, titleMode: NonNullable<LocalScanInput["titleMode"]>): string {
+  if (titleMode === "path") {
+    return stripExtension(path).split("/").join(" - ");
+  }
+  return stem(path);
+}
+
+function stripExtension(path: string): string {
+  return path.replace(/\.[^.]+$/, "");
 }
 
 function normalizePath(path: string): string {

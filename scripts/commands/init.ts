@@ -55,7 +55,6 @@ export function renderInitConfig(input: InitConfigInput): string {
     "overwritePolicy: explicit-only",
     "rateLimit:",
     "  writeDelayMs: 5000",
-    "  retries: 4",
     ""
   ];
 

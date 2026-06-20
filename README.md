@@ -60,6 +60,14 @@ gyl verify -c git-your-lark.yml
 
 `apply` and `merge` are advanced aliases for publishing a reviewed sync proposal. They are not GitHub pull request merge commands and do not create or merge GitHub PRs.
 
+## Config Notes
+
+`titleMode: stem` uses each Markdown filename without `.md` as the Lark document title. `titleMode: path` uses the workspace-relative path without `.md`, with path segments joined by ` - `.
+
+`attachmentPolicy: upload-supported` uploads changed referenced attachments. `attachmentPolicy: block` turns present attachments into proposal blockers. `attachmentPolicy: warn-only` records warnings for present attachments and skips upload actions. Missing attachments are always blockers.
+
+`rateLimit.writeDelayMs` waits between remote write operations during publish. Configure it to `0` for tests or dry local runners.
+
 ## Safety Model
 
 Git Your Lark is preview-first. A proposal with blockers must not be published; regenerate or fix the workspace until the proposal is clear.

@@ -19,8 +19,7 @@ export const ConfigSchema = z.object({
   conflictPolicy: z.enum(["stop"]).default("stop"),
   overwritePolicy: z.enum(["explicit-only", "allow"]).default("explicit-only"),
   rateLimit: z.object({
-    writeDelayMs: z.number().int().min(0).default(5000),
-    retries: z.number().int().min(0).default(4)
+    writeDelayMs: z.number().int().min(0).default(5000)
   }).strict().default({})
 }).strict();
 

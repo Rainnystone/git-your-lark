@@ -42,6 +42,14 @@ rateLimit:
 `)).toThrow(/typo/);
   });
 
+  it("rejects unimplemented rate limit retry configuration", () => {
+    expect(() => parseConfig(`
+remoteFolderToken: fld
+rateLimit:
+  retries: 4
+`)).toThrow(/retries/);
+  });
+
   it("exposes a safe default config", () => {
     expect(defaultConfig.include).toEqual(["**/*.md"]);
     expect(defaultConfig.overwritePolicy).toBe("explicit-only");

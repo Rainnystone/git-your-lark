@@ -193,6 +193,38 @@ describe("buildProposal", () => {
     expect(renderProposalMarkdown(proposal)).toContain("## Blockers");
     expect(renderProposalMarkdown(proposal)).toContain("## Warnings");
   });
+
+  it("blocks present attachments instead of uploading them when attachmentPolicy is block", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [localDocument({ path: "000_index.md" })],
+        attachments: [{ path: "assets/diagram.png", hash: "img-hash", owner: "000_index.md" }]
+      }),
+      remote: remoteManifest(),
+      state: state(),
+      attachmentPolicy: "block"
+    });
+
+    expect(proposal.actions.map((action) => action.kind)).toEqual(["create-document"]);
+    expect(proposal.blockers).toEqual(["Attachment blocked by attachmentPolicy=block: assets/diagram.png"]);
+    expect(proposal.warnings).toEqual([]);
+  });
+
+  it("warns about present attachments without uploading them when attachmentPolicy is warn-only", () => {
+    const proposal = buildProposal({
+      local: localManifest({
+        documents: [localDocument({ path: "000_index.md" })],
+        attachments: [{ path: "assets/diagram.png", hash: "img-hash", owner: "000_index.md" }]
+      }),
+      remote: remoteManifest(),
+      state: state(),
+      attachmentPolicy: "warn-only"
+    });
+
+    expect(proposal.actions.map((action) => action.kind)).toEqual(["create-document"]);
+    expect(proposal.blockers).toEqual([]);
+    expect(proposal.warnings).toEqual(["Attachment not uploaded because attachmentPolicy=warn-only: assets/diagram.png"]);
+  });
 });
 
 describe("proposalCommand", () => {

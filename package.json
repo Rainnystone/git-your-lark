@@ -6,13 +6,25 @@
   "bin": {
     "gyl": "./dist/gyl.js"
   },
+  "files": [
+    "dist/gyl.js",
+    "dist/scripts/",
+    ".codex-plugin/",
+    "skills/",
+    "docs/examples/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx scripts/gyl.ts",
-    "validate:plugin": "node scripts/validate-plugin.mjs"
+    "prepack": "npm run build",
+    "prepare": "npm run build",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
     "commander": "^12.1.0",

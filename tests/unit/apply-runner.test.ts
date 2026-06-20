@@ -351,6 +351,52 @@ describe("applyProposal", () => {
     });
   });
 
+  it("calls the configured delay hook between remote write operations", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-apply-rate-limit-"));
+    await mkdir(join(workspaceRoot, "assets"), { recursive: true });
+    await writeFile(join(workspaceRoot, "assets", "one.png"), "fake image 1", "utf8");
+    await writeFile(join(workspaceRoot, "assets", "two.png"), "fake image 2", "utf8");
+    const configPath = await writeConfig(workspaceRoot, {
+      rateLimitWriteDelayMs: 250,
+      state: state({
+        documents: {
+          "001_owner.md": stateDocument({ path: "001_owner.md", title: "001_owner", token: "doc_owner", localHash: "hash-owner" })
+        }
+      })
+    });
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        actions: [
+          uploadAttachmentAction({ path: "assets/one.png", hash: "hash-one", owner: "001_owner.md" }),
+          uploadAttachmentAction({ path: "assets/two.png", hash: "hash-two", owner: "001_owner.md" })
+        ]
+      })
+    );
+    const events: string[] = [];
+    const run = vi.fn<ApplyRunner>(async (_command, args) => {
+      events.push(`run:${args[1]}`);
+      const token = `media_${events.length}`;
+      return result({ stdout: JSON.stringify({ data: { token } }) });
+    });
+    const sleep = vi.fn(async (ms: number) => {
+      events.push(`sleep:${ms}`);
+    });
+
+    const applyResult = await applyProposal({
+      proposalPath,
+      configPath,
+      run,
+      sleep,
+      scanRemoteFolder: async () => remoteManifest()
+    });
+
+    expect(applyResult).toMatchObject({ ok: true, status: "applied" });
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledWith(250);
+    expect(events).toEqual(["run:+media-insert", "sleep:250", "run:+media-insert"]);
+  });
+
   it("stops before scanning or running commands when proposal base folder differs from config", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-apply-folder-mismatch-"));
     const configPath = await writeConfig(workspaceRoot);
@@ -429,7 +475,7 @@ describe("applyProposal", () => {
 
 async function writeConfig(
   workspaceRoot: string,
-  input: { referenceMode?: "lark-doc-cite" | "url-link"; state?: GitYourLarkState } = {}
+  input: { referenceMode?: "lark-doc-cite" | "url-link"; rateLimitWriteDelayMs?: number; state?: GitYourLarkState } = {}
 ): Promise<string> {
   const configPath = join(workspaceRoot, "git-your-lark.yml");
   await mkdir(workspaceRoot, { recursive: true });
@@ -441,6 +487,8 @@ async function writeConfig(
       "statePath: .git-your-lark/state.json",
       `referenceMode: ${input.referenceMode ?? "lark-doc-cite"}`,
       "overwritePolicy: explicit-only",
+      "rateLimit:",
+      `  writeDelayMs: ${input.rateLimitWriteDelayMs ?? 0}`,
       ""
     ].join("\n"),
     "utf8"

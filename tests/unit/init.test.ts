@@ -44,6 +44,7 @@ describe("renderInitConfig", () => {
     expect(yaml).toContain('remoteFolderUrl: "https://example.feishu.cn/drive/folder/fld_token"');
     expect(yaml).toContain("referenceMode: lark-doc-cite");
     expect(yaml).toContain("overwritePolicy: explicit-only");
+    expect(yaml).not.toContain("retries:");
   });
 
   it("builds create-folder args for first publish under user drive root", () => {
