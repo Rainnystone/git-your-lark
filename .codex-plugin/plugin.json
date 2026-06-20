@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
   "author": {
-    "name": "Tachikoma",
-    "url": "https://github.com/tachikoma"
+    "name": "Rainnystone",
+    "url": "https://github.com/Rainnystone"
   },
-  "repository": "https://github.com/tachikoma/git-your-lark",
+  "repository": "https://github.com/Rainnystone/git-your-lark",
   "license": "MIT",
   "keywords": ["lark", "feishu", "markdown", "sync", "codex"],
   "skills": "./skills/",
@@ -14,7 +14,7 @@
     "displayName": "Git Your Lark",
     "shortDescription": "Publish Markdown workspaces to Lark with reviewable sync previews.",
     "longDescription": "Git Your Lark is a Codex plugin that uses lark-cli to publish local Markdown workspaces into Lark/Feishu documents. It generates reviewable sync previews before publishing changes and verifies remote documents after sync.",
-    "developerName": "Tachikoma",
+    "developerName": "Rainnystone",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [

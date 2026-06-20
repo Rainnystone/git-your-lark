@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const requiredFiles = [
   "package.json",
   "README.md",
+  "README.zh-CN.md",
   "LICENSE",
   ".codex-plugin/plugin.json",
   "skills/sync-workspace/SKILL.md",
