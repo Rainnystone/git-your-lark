@@ -13,8 +13,7 @@ Git Your Lark is preview-first. Always create and explain a sync proposal before
 
 - Required dependency: the official `lark-cli` from `larksuite/cli`.
 - Before any sync run, run `gyl doctor`.
-- Use bare `gyl` in commands because the package bin is `gyl`. If `gyl` is not available on PATH, use the package or local script form that matches the installation, such as `npm run dev -- ...` from this repository.
-- If `lark-cli` is missing, stop and tell the user to install `@larksuite/cli`.
+- Use bare `gyl` in commands. The `gyl` CLI is provided by the plugin: on Claude Code it ships as `bin/gyl` on PATH; on Codex or a global npm install it comes from the `git-your-lark` package. If `gyl doctor` reports a missing `lark-cli`, stop and tell the user to install `@larksuite/cli`.
 - Inspect doctor output. If auth or required scopes are missing or unclear, stop and show the reported or recommended auth command, or ask the user to authorize before continuing.
 
 ## Workflow
