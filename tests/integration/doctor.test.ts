@@ -4,7 +4,7 @@ import { analyzeDoctor } from "../../scripts/commands/doctor.js";
 describe("analyzeDoctor", () => {
   it("passes when lark-cli path, version, auth and required commands are ok", () => {
     const result = analyzeDoctor({
-      larkCliPath: "/opt/homebrew/bin/lark-cli",
+      larkCliPath: "lark-cli",
       versionOutput: "lark-cli version 1.0.56",
       authOutput: "OK: authorized",
       requiredCommands: {
