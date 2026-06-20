@@ -3,7 +3,19 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { validateClaudePlugin } from "./claude-manifest.mjs";
 
+// Claude Code plugin validation (runs independently of Codex tooling).
+const claudeErrors = validateClaudePlugin(process.cwd());
+if (claudeErrors.length > 0) {
+  console.error(
+    `Claude plugin validation failed:\n${claudeErrors.map((e) => `- ${e}`).join("\n")}`
+  );
+  process.exit(1);
+}
+console.log("Claude plugin manifest OK.");
+
+// Codex plugin validation (delegates to the Codex plugin-creator skill).
 const validatorPath = join(
   homedir(),
   ".codex",

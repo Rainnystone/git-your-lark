@@ -1,6 +1,6 @@
 {
   "name": "git-your-lark",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
   "author": {
     "name": "Rainnystone",

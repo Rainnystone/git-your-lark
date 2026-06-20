@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name("gyl")
   .description("Preview-first Markdown workspace publishing to Lark/Feishu.")
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("doctor")

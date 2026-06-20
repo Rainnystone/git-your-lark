@@ -1,0 +1,9 @@
+{
+  "name": "git-your-lark",
+  "version": "0.2.0",
+  "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
+  "author": { "name": "Rainnystone", "url": "https://github.com/Rainnystone" },
+  "repository": "https://github.com/Rainnystone/git-your-lark",
+  "license": "MIT",
+  "keywords": ["lark", "feishu", "markdown", "sync", "claude", "claude-code", "codex"]
+}
