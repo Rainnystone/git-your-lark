@@ -1,5 +1,6 @@
 node_modules/
 dist/
 .git-your-lark/
+.superpowers/
 *.log
 .DS_Store
