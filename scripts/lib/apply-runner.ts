@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import { parseConfig, type GitYourLarkConfig } from "./config.js";
+import { parseConfig, requirePublishConfig, type GitYourLarkConfig } from "./config.js";
 import { readJson, readUtf8, writeJson } from "./fs-utils.js";
 import { extractJson, runCommand, type CommandResult } from "./lark-cli.js";
 import { planMarkdownWrite } from "./patch-plan.js";
@@ -156,8 +156,9 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
 
   const configDir = dirname(configPath);
   const config = parseConfig(await readUtf8(configPath));
-  if (proposal.baseRemoteFolderToken !== config.remoteFolderToken) {
-    const problem = `Proposal base remote folder token ${proposal.baseRemoteFolderToken} does not match config remote folder token ${config.remoteFolderToken}`;
+  const publishConfig = requirePublishConfig(config);
+  if (proposal.baseRemoteFolderToken !== publishConfig.remoteFolderToken) {
+    const problem = `Proposal base remote folder token ${proposal.baseRemoteFolderToken} does not match config remote folder token ${publishConfig.remoteFolderToken}`;
     await record("folder-token-mismatch", { problems: [problem] }, "failed");
     return { ok: false, status: "failed", problems: [problem], journalPath };
   }
@@ -170,14 +171,14 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
     }
     hasRemoteWrite = true;
   };
-  const remote = await scanRemoteFolder(config.remoteFolderToken);
+  const remote = await scanRemoteFolder(publishConfig.remoteFolderToken);
   const conflicts = analyzeRemoteConflicts(proposal, remote);
   if (conflicts.length > 0) {
     await record("conflict", { problems: conflicts }, "conflict");
     return { ok: false, status: "conflict", problems: conflicts, journalPath };
   }
 
-  let state = await loadState(statePath, config.remoteFolderToken);
+  let state = await loadState(statePath, publishConfig.remoteFolderToken);
   let stateDirty = false;
   const remoteByToken = new Map(remote.entries.map((entry) => [entry.token, entry]));
 
@@ -193,6 +194,7 @@ export async function applyProposal(options: ApplyProposalOptions): Promise<Appl
           const created = await createPlaceholderDocument({
             action,
             config,
+            remoteFolderToken: publishConfig.remoteFolderToken,
             workspaceRoot,
             beforeRemoteWrite,
             run: runner
@@ -303,6 +305,7 @@ function defaultSleep(ms: number): Promise<void> {
 async function createPlaceholderDocument(input: {
   action: Extract<ProposalAction, { kind: "create-document" }>;
   config: GitYourLarkConfig;
+  remoteFolderToken: string;
   workspaceRoot: string;
   beforeRemoteWrite: () => Promise<void>;
   run: ApplyRunner;
@@ -324,7 +327,7 @@ async function createPlaceholderDocument(input: {
         "--type",
         "docx",
         "--folder-token",
-        input.config.remoteFolderToken,
+        input.remoteFolderToken,
         "--name",
         input.action.title
       ],

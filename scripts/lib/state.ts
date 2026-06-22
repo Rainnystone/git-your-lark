@@ -27,6 +27,47 @@ export interface GitYourLarkState {
   lastAppliedProposalId?: string;
 }
 
+export interface PullSourceState {
+  type: "doc" | "folder" | "wiki_node";
+  tokenOrUrl: string;
+  sourceUrl?: string;
+  remoteTitle?: string;
+  remoteRevision?: string;
+  remoteModifiedTime?: string;
+  lastPulledAt?: string;
+}
+
+export interface PullDocumentState {
+  docToken: string;
+  wikiNodeToken?: string;
+  sourceUrl?: string;
+  remoteTitle: string;
+  remotePath: string;
+  localPath: string;
+  remoteRevision?: string;
+  remoteModifiedTime?: string;
+  localHash: string;
+  assetPaths: string[];
+}
+
+export interface PullAssetState {
+  sourceToken?: string;
+  sourceUrl?: string;
+  localPath: string;
+  ownerDocToken: string;
+  hash: string;
+}
+
+export interface GitYourLarkRootState {
+  version: 2;
+  publish: GitYourLarkState;
+  pull: {
+    sources: Record<string, PullSourceState>;
+    documents: Record<string, PullDocumentState>;
+    assets: Record<string, PullAssetState>;
+  };
+}
+
 const RemoteDocumentStateSchema = z.object({
   path: z.string(),
   title: z.string(),
@@ -53,6 +94,47 @@ const GitYourLarkStateSchema = z.object({
   lastAppliedProposalId: z.string().optional()
 }).strict();
 
+const PullSourceStateSchema = z.object({
+  type: z.enum(["doc", "folder", "wiki_node"]),
+  tokenOrUrl: z.string(),
+  sourceUrl: z.string().optional(),
+  remoteTitle: z.string().optional(),
+  remoteRevision: z.string().optional(),
+  remoteModifiedTime: z.string().optional(),
+  lastPulledAt: z.string().optional()
+}).strict();
+
+const PullDocumentStateSchema = z.object({
+  docToken: z.string(),
+  wikiNodeToken: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  remoteTitle: z.string(),
+  remotePath: z.string(),
+  localPath: z.string(),
+  remoteRevision: z.string().optional(),
+  remoteModifiedTime: z.string().optional(),
+  localHash: z.string(),
+  assetPaths: z.array(z.string())
+}).strict();
+
+const PullAssetStateSchema = z.object({
+  sourceToken: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  localPath: z.string(),
+  ownerDocToken: z.string(),
+  hash: z.string()
+}).strict();
+
+const GitYourLarkRootStateSchema = z.object({
+  version: z.literal(2),
+  publish: GitYourLarkStateSchema,
+  pull: z.object({
+    sources: z.record(PullSourceStateSchema),
+    documents: z.record(PullDocumentStateSchema),
+    assets: z.record(PullAssetStateSchema)
+  }).strict()
+}).strict();
+
 export function emptyState(remoteFolderToken: string, remoteFolderUrl?: string): GitYourLarkState {
   return {
     version: 1,
@@ -63,21 +145,105 @@ export function emptyState(remoteFolderToken: string, remoteFolderUrl?: string):
   };
 }
 
-export async function loadState(path: string, remoteFolderToken: string): Promise<GitYourLarkState> {
+function emptyPullState(): GitYourLarkRootState["pull"] {
+  return {
+    sources: {},
+    documents: {},
+    assets: {}
+  };
+}
+
+function emptyRootState(remoteFolderToken = "", remoteFolderUrl?: string): GitYourLarkRootState {
+  return {
+    version: 2,
+    publish: emptyState(remoteFolderToken, remoteFolderUrl),
+    pull: emptyPullState()
+  };
+}
+
+function migratePublishState(publish: GitYourLarkState): GitYourLarkRootState {
+  return {
+    version: 2,
+    publish,
+    pull: emptyPullState()
+  };
+}
+
+function isEmptyPublishState(state: GitYourLarkState): boolean {
+  return !state.remoteFolderToken.trim()
+    && !state.remoteFolderUrl
+    && Object.keys(state.documents).length === 0
+    && Object.keys(state.attachments).length === 0
+    && !state.lastAppliedProposalId;
+}
+
+export async function loadRootState(path: string, remoteFolderToken?: string): Promise<GitYourLarkRootState> {
   try {
-    const parsed = GitYourLarkStateSchema.safeParse(await readJson(path));
-    if (!parsed.success) {
-      throw new Error(`Invalid git-your-lark state: ${parsed.error.message}`);
+    const value = await readJson(path);
+    const root = GitYourLarkRootStateSchema.safeParse(value);
+    if (root.success) {
+      return root.data;
     }
-    return parsed.data;
+
+    const publish = GitYourLarkStateSchema.safeParse(value);
+    if (publish.success) {
+      return migratePublishState(publish.data);
+    }
+
+    throw new Error(`Invalid git-your-lark state: ${root.error.message}`);
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return emptyState(remoteFolderToken);
+      return emptyRootState(remoteFolderToken);
     }
     throw error;
   }
 }
 
-export async function saveState(path: string, state: GitYourLarkState): Promise<void> {
+export async function saveRootState(path: string, state: GitYourLarkRootState): Promise<void> {
   await writeJson(path, state);
+}
+
+export async function loadPublishState(path: string, remoteFolderToken: string): Promise<GitYourLarkState> {
+  const root = await loadRootState(path, remoteFolderToken);
+  const trimmedRemoteFolderToken = remoteFolderToken.trim();
+  if (trimmedRemoteFolderToken && isEmptyPublishState(root.publish)) {
+    return emptyState(trimmedRemoteFolderToken);
+  }
+  return root.publish;
+}
+
+export async function savePublishState(path: string, state: GitYourLarkState): Promise<void> {
+  try {
+    const value = await readJson(path);
+    const root = GitYourLarkRootStateSchema.safeParse(value);
+    if (root.success) {
+      await saveRootState(path, {
+        ...root.data,
+        publish: state
+      });
+      return;
+    }
+
+    const publish = GitYourLarkStateSchema.safeParse(value);
+    if (publish.success) {
+      await writeJson(path, state);
+      return;
+    }
+
+    throw new Error(`Invalid git-your-lark state: ${root.error.message}`);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      await writeJson(path, state);
+      return;
+    }
+    throw error;
+  }
+}
+
+export async function loadState(path: string, remoteFolderToken: string): Promise<GitYourLarkState> {
+  return loadPublishState(path, remoteFolderToken);
+}
+
+export async function saveState(path: string, state: GitYourLarkState): Promise<void> {
+  await savePublishState(path, state);
 }

@@ -1,5 +1,5 @@
 import { dirname, join, resolve } from "node:path";
-import { parseConfig } from "../lib/config.js";
+import { parseConfig, requirePublishConfig } from "../lib/config.js";
 import { readUtf8, writeJson, writeUtf8 } from "../lib/fs-utils.js";
 import { scanLocalWorkspace as defaultScanLocalWorkspace, type LocalManifest, type LocalScanInput } from "../lib/local-scan.js";
 import { buildProposal, renderProposalMarkdown } from "../lib/proposal.js";
@@ -21,6 +21,7 @@ export async function proposalCommand(configPath: string, dependencies: Proposal
   const resolvedConfigPath = resolve(configPath);
   const configDir = dirname(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
+  const publishConfig = requirePublishConfig(config);
   const workspaceRoot = resolve(configDir, config.workspaceRoot);
 
   const local = await scanLocalWorkspace({
@@ -29,8 +30,8 @@ export async function proposalCommand(configPath: string, dependencies: Proposal
     exclude: config.exclude,
     titleMode: config.titleMode
   });
-  const remote = await scanRemoteFolder(config.remoteFolderToken);
-  const state = await loadState(resolve(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const remote = await scanRemoteFolder(publishConfig.remoteFolderToken);
+  const state = await loadState(resolve(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
   const proposal = buildProposal({
     local,
     remote,
