@@ -15,6 +15,6 @@ describe("bin/gyl bundle", () => {
       encoding: "utf8"
     });
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("0.2.0");
+    expect(result.stdout).toContain("0.3.0");
   });
 });

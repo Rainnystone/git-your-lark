@@ -2,9 +2,9 @@
 
 [中文](./README.zh-CN.md) | English
 
-Git Your Lark is a Codex and Claude Code plugin and agent skill for publishing a local Markdown or Obsidian workspace to Lark / Feishu Docs. It uses the official `lark-cli`, creates Lark docx documents instead of uploading raw `.md` files, keeps local document links clickable in Lark, and asks for a reviewable preview before it writes anything.
+Git Your Lark is a Codex and Claude Code plugin and agent skill for publishing a local Markdown or Obsidian workspace to Lark / Feishu Docs, and for importing reviewed Lark pages back into local Markdown. It uses the official `lark-cli`, creates Lark docx documents instead of uploading raw `.md` files, keeps local document links clickable in Lark, and asks for a reviewable preview before it writes anything.
 
-If you are looking for an AI agent tool to sync Markdown to Lark, publish Obsidian notes to Feishu Docs, or keep a Lark workspace aligned with local docs, this is the repo.
+If you are looking for an AI agent tool to sync Markdown to Lark, publish Obsidian notes to Feishu Docs, pull Lark Docs into Obsidian, or keep a Lark workspace aligned with local docs, this is the repo.
 
 ## Who it is for
 
@@ -23,6 +23,8 @@ Most Markdown-to-Lark workflows fall apart in small but painful ways:
 - Nobody knows what will change until after the sync runs.
 
 Git Your Lark treats local Markdown as the source of truth, but it still stops before risky writes. The normal flow is preview first, publish after confirmation, verify after publish.
+
+When you pull from Lark to Obsidian, the same rule applies: preview first, apply after confirmation, verify after apply. It does not silently merge both sides for you.
 
 ## How the workflow feels
 
@@ -68,13 +70,17 @@ Use lark-cli to sync my docs folder to Lark Drive and keep cross-document links 
 Create a preview before updating my Lark workspace from local Markdown.
 ```
 
+```text
+Pull this Lark wiki page into my Obsidian vault, but show me the preview first.
+```
+
 ## What it does not do
 
 Git Your Lark v1 is deliberately narrow.
 
 - It does not manage Lark sharing settings or public links.
 - It does not delete or archive remote-only documents.
-- It does not pull edits from Lark back into local Markdown.
+- It does not auto-merge two-way edits.
 - It does not implement a GitHub-style pull request system.
 - It does not try to auto-merge remote human edits.
 - It does not store Lark access tokens. Authentication stays inside `lark-cli`.
@@ -89,6 +95,7 @@ This repository contains the first working v1 implementation. The core flow is i
 - Lark doc reference rendering
 - publish / apply / merge command aliases
 - verification after publish
+- Lark-to-Obsidian pull preview / apply / verify
 - Codex skill UX
 - Claude Code plugin support (marketplace install)
 - package validation for the `gyl` CLI
@@ -189,6 +196,34 @@ gyl verify -c git-your-lark.yml
 
 `apply` and `merge` are advanced aliases for publishing a reviewed proposal. They are not GitHub pull request commands.
 
+## Pull from Lark to Obsidian
+
+Use pull when a Lark doc, folder, or wiki node should become local Markdown in your workspace. Start by adding a `pull:` block to `git-your-lark.yml`, or run init with pull options:
+
+```bash
+gyl init --pull-source-type wiki_node --pull-source https://example.feishu.cn/wiki/wiki_token
+```
+
+Create a pull preview:
+
+```bash
+gyl pull preview -c git-your-lark.yml
+```
+
+Read the generated preview. If it has blockers, fix those first or ask the agent to explain them.
+
+Apply the reviewed JSON proposal only after you confirm:
+
+```bash
+gyl pull apply .git-your-lark/proposals/<proposal-id>.json -c git-your-lark.yml
+```
+
+Verify the imported Markdown and assets:
+
+```bash
+gyl pull verify -c git-your-lark.yml
+```
+
 ## Config notes
 
 Important fields in `git-your-lark.yml`:
@@ -196,6 +231,11 @@ Important fields in `git-your-lark.yml`:
 ```yaml
 workspaceRoot: .
 remoteFolderToken: fld_replace_with_lark_folder_token
+# pull:
+#   source:
+#     type: wiki_node
+#     tokenOrUrl: https://example.feishu.cn/wiki/wiki_replace_with_node_token
+#   outputDir: .
 include:
   - "**/*.md"
 exclude:

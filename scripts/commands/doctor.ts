@@ -6,7 +6,11 @@ export const REQUIRED_LARK_COMMANDS = [
   "drive +import",
   "docs +fetch",
   "docs +update",
-  "docs +media-insert"
+  "docs +media-insert",
+  "drive +inspect",
+  "wiki +node-get",
+  "wiki +node-list",
+  "docs +media-download"
 ] as const;
 
 export interface DoctorInput {

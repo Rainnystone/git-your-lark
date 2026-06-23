@@ -1,7 +1,7 @@
 {
   "name": "git-your-lark",
-  "version": "0.2.0",
-  "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
+  "version": "0.3.0",
+  "description": "Preview-first Markdown workspace publishing and importing for Lark/Feishu through lark-cli.",
   "type": "module",
   "bin": {
     "gyl": "./dist/gyl.js"

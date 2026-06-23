@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -25,6 +25,15 @@ describe("fs primitives", () => {
     await writeJson(path, value);
 
     await expect(readJson<typeof value>(path)).resolves.toEqual(value);
+  });
+
+  it("does not leave writeJson temp files after a successful write", async () => {
+    const root = await mkdtemp(join(tmpdir(), "gyl-fs-temp-"));
+    const path = join(root, "nested", "state.json");
+
+    await writeJson(path, { version: 1 });
+
+    await expect(readdir(join(root, "nested"))).resolves.toEqual(["state.json"]);
   });
 
   it("creates parent directories and roundtrips UTF-8 text", async () => {

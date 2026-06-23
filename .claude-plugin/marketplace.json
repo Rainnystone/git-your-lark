@@ -5,10 +5,10 @@
     {
       "name": "git-your-lark",
       "source": "./",
-      "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
-      "version": "0.2.0",
+      "description": "Preview-first Markdown workspace publishing and importing for Lark/Feishu through lark-cli.",
+      "version": "0.3.0",
       "category": "Productivity",
-      "tags": ["lark", "feishu", "markdown", "sync", "docs"]
+      "tags": ["lark", "feishu", "markdown", "sync", "obsidian"]
     }
   ]
 }

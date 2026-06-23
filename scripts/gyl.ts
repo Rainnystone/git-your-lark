@@ -3,6 +3,7 @@ import { applyCommand } from "./commands/apply.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { proposalCommand } from "./commands/proposal.js";
+import { pullApplyCommand, pullPreviewCommand, pullVerifyCommand } from "./commands/pull.js";
 import { scanCommand } from "./commands/scan.js";
 import { verifyCommand } from "./commands/verify.js";
 
@@ -10,8 +11,8 @@ const program = new Command();
 
 program
   .name("gyl")
-  .description("Preview-first Markdown workspace publishing to Lark/Feishu.")
-  .version("0.2.0");
+  .description("Preview-first Markdown workspace publishing and importing for Lark/Feishu.")
+  .version("0.3.0");
 
 program
   .command("doctor")
@@ -28,6 +29,9 @@ program
   .option("--create-remote-folder", "Create a new target Lark Drive folder for first publish", false)
   .option("--folder-name <name>", "Folder name to create when --create-remote-folder is set")
   .option("--parent-folder-token <token>", "Optional parent folder token for the new remote folder")
+  .option("--pull-source-type <doc|folder|wiki_node>", "Source type for Lark-to-Obsidian imports")
+  .option("--pull-source <url-or-token>", "Source Lark/Feishu URL or token for imports")
+  .option("--pull-output-dir <path>", "Local output directory for imported Markdown")
   .option("-o, --output <path>", "Config output path", "git-your-lark.yml")
   .option("-w, --workspace-root <path>", "Local workspace root", ".")
   .option("--force", "Overwrite an existing config file", false)
@@ -38,6 +42,9 @@ program
       createRemoteFolder: options.createRemoteFolder,
       folderName: options.folderName,
       parentFolderToken: options.parentFolderToken,
+      pullSourceType: options.pullSourceType,
+      pullSourceTokenOrUrl: options.pullSource,
+      pullOutputDir: options.pullOutputDir,
       outputPath: options.output,
       workspaceRoot: options.workspaceRoot,
       force: options.force
@@ -90,6 +97,32 @@ program
   .description("Verify local Markdown titles against remote Lark docx state.")
   .action(async (options) => {
     process.exitCode = await verifyCommand(options.config);
+  });
+
+const pull = program.command("pull").description("Preview and apply Lark-to-Obsidian imports.");
+
+pull
+  .command("preview")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Create a reviewable Lark-to-Obsidian import preview.")
+  .action(async (options) => {
+    process.exitCode = await pullPreviewCommand(options.config);
+  });
+
+pull
+  .command("apply <proposal>")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Apply a reviewed Lark-to-Obsidian import preview.")
+  .action(async (proposal, options) => {
+    process.exitCode = await pullApplyCommand(proposal, options.config);
+  });
+
+pull
+  .command("verify")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Verify pulled local Markdown files and assets.")
+  .action(async (options) => {
+    process.exitCode = await pullVerifyCommand(options.config);
   });
 
 await program.parseAsync(process.argv);
