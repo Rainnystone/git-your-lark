@@ -61,14 +61,25 @@ export function validateClaudePlugin(rootDir) {
   if (!existsSync(binGylPath)) {
     errors.push(`missing ${binGylPath}`);
   } else if (!IS_WIN) {
-    // The POSIX executable-bit check is meaningless on Windows: Node synthesizes
-    // `fs.statSync().mode` and the owner-exec bit (`0o100`) is typically unset,
-    // so this check would always report "not executable" there. The bundled
-    // `bin/gyl` is invoked via the npm `.cmd` shim (see package.json "bin"),
-    // which does not rely on the exec bit, so skipping on Windows is safe.
+    // The POSIX executable-bit check is meaningful here; verify the bundle was
+    // made executable (npm run build:bundle chmods it).
     const mode = statSync(binGylPath).mode & 0o777;
     if (!(mode & 0o111)) {
       errors.push(`${binGylPath} is not executable (run: npm run build:bundle)`);
+    }
+  }
+
+  if (IS_WIN) {
+    // Windows ignores the `#!/usr/bin/env node` shebang and cannot execute the
+    // extensionless `bin/gyl` directly from PATH. The Claude Code plugin places
+    // this `bin/` directory on PATH, so on Windows the runnable entry point is
+    // `bin/gyl.cmd`. Validate it exists so a plugin install cannot pass
+    // validation but fail the first `gyl doctor`. (The exec-bit check above is
+    // skipped on Windows for the same reason: fs.statSync().mode exec bits are
+    // synthesized and meaningless there.)
+    const binGylCmdPath = join(rootDir, "bin", "gyl.cmd");
+    if (!existsSync(binGylCmdPath)) {
+      errors.push(`${binGylCmdPath} is missing (run: npm run build:bundle)`);
     }
   }
 

@@ -19,3 +19,9 @@
 *.gif binary
 *.webp binary
 *.ico binary
+
+# Windows batch files must keep CRLF endings: cmd.exe parses them line-by-line
+# and LF-only files can misbehave. `bin/gyl.cmd` is a committed launcher, so
+# exclude it from the LF policy above. (text=false + -diff keeps them verbatim.)
+*.cmd text eol=crlf
+*.bat text eol=crlf

@@ -22331,6 +22331,34 @@ async function doctorCommand() {
 
 // scripts/commands/init.ts
 import { existsSync } from "node:fs";
+import { join as join4 } from "node:path";
+var WORKSPACE_GITATTRIBUTES = [
+  "# Managed by git-your-lark. Enforces LF line endings so content hashes",
+  "# recorded in .git-your-lark/state.json stay stable across Windows/macOS/Linux.",
+  "# Safe to extend with your own rules; remove this file only if you manage",
+  "# line endings another way (e.g. a repo-wide .gitattributes with eol=lf).",
+  "* text=auto eol=lf",
+  "",
+  "# Binary assets: never convert line endings or attempt text diffs.",
+  "*.png binary",
+  "*.jpg binary",
+  "*.jpeg binary",
+  "*.gif binary",
+  "*.webp binary",
+  "*.ico binary",
+  ""
+].join("\n");
+function renderWorkspaceGitattributes() {
+  return WORKSPACE_GITATTRIBUTES;
+}
+async function writeWorkspaceGitattributes(workspaceRoot) {
+  const target = join4(workspaceRoot, ".gitattributes");
+  if (existsSync(target)) {
+    return null;
+  }
+  await writeUtf8(target, renderWorkspaceGitattributes());
+  return target;
+}
 function yamlString(value) {
   return JSON.stringify(value);
 }
@@ -22475,16 +22503,26 @@ async function initCommand(options) {
     pullOutputDir: hasPullIntent ? options.pullOutputDir ?? "." : void 0
   }));
   console.log(`Created ${outputPath}`);
+  try {
+    const written = await writeWorkspaceGitattributes(workspaceRoot);
+    if (written) {
+      console.log(`Created ${written} (LF line-ending policy for stable content hashes)`);
+    }
+  } catch (error) {
+    console.warn(
+      `Could not write workspace .gitattributes: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
   return 0;
 }
 
 // scripts/commands/proposal.ts
-import { dirname as dirname4, join as join5, resolve as resolve3 } from "node:path";
+import { dirname as dirname4, join as join6, resolve as resolve3 } from "node:path";
 
 // scripts/lib/local-scan.ts
 var import_fast_glob = __toESM(require_out4(), 1);
 import { readFile as readFile2 } from "node:fs/promises";
-import { dirname as dirname3, join as join4, relative, resolve as resolve2, sep } from "node:path";
+import { dirname as dirname3, join as join5, relative, resolve as resolve2, sep } from "node:path";
 
 // scripts/lib/hash.ts
 import { createHash } from "node:crypto";
@@ -22662,7 +22700,7 @@ async function scanLocalWorkspace(input) {
   const attachments = /* @__PURE__ */ new Map();
   for (const documentPath of documentPaths) {
     const normalizedDocumentPath = normalizePath2(documentPath);
-    const absoluteDocumentPath = join4(workspaceRoot, normalizedDocumentPath);
+    const absoluteDocumentPath = join5(workspaceRoot, normalizedDocumentPath);
     const content = await readFile2(absoluteDocumentPath, "utf8");
     const references = parseMarkdownReferences(content);
     const documentAttachments = [];
@@ -22930,8 +22968,8 @@ async function proposalCommand(configPath, dependencies = {}) {
     now: now()
   });
   const proposalDir = resolve3(workspaceRoot, config.proposalDir);
-  const jsonPath = join5(proposalDir, `${proposal.id}.json`);
-  const markdownPath = join5(proposalDir, `${proposal.id}.md`);
+  const jsonPath = join6(proposalDir, `${proposal.id}.json`);
+  const markdownPath = join6(proposalDir, `${proposal.id}.md`);
   await writeJson(jsonPath, proposal);
   await writeUtf8(markdownPath, renderProposalMarkdown(proposal));
   console.log(`Wrote proposal JSON: ${jsonPath}`);
@@ -22942,7 +22980,7 @@ async function proposalCommand(configPath, dependencies = {}) {
 // scripts/commands/pull.ts
 var import_fast_glob2 = __toESM(require_out4(), 1);
 import { readFile as readFile5, realpath as realpath3, stat as stat2 } from "node:fs/promises";
-import { dirname as dirname7, join as join6, posix as posix6, resolve as resolve6, sep as sep4 } from "node:path";
+import { dirname as dirname7, join as join7, posix as posix6, resolve as resolve6, sep as sep4 } from "node:path";
 
 // scripts/lib/pull-apply.ts
 import { copyFile, mkdir as mkdir2, readFile as readFile3, realpath, rm as rm3, writeFile as writeFile3 } from "node:fs/promises";
@@ -25222,8 +25260,8 @@ async function pullPreviewCommand(configPath, dependencies = {}) {
     now: now()
   });
   const proposalDir = resolve6(workspaceRoot, config.proposalDir);
-  const jsonPath = join6(proposalDir, `${proposal.id}.json`);
-  const markdownPath = join6(proposalDir, `${proposal.id}.md`);
+  const jsonPath = join7(proposalDir, `${proposal.id}.json`);
+  const markdownPath = join7(proposalDir, `${proposal.id}.md`);
   await writeJson(jsonPath, proposal);
   await writeUtf8(markdownPath, renderPullProposalMarkdown2(proposal));
   console.log(`Wrote pull proposal JSON: ${jsonPath}`);
@@ -25319,7 +25357,7 @@ function isInsideWorkspace2(path, workspaceRoot) {
 }
 
 // scripts/commands/scan.ts
-import { dirname as dirname8, join as join7, resolve as resolve7 } from "node:path";
+import { dirname as dirname8, join as join8, resolve as resolve7 } from "node:path";
 async function scanCommand(configPath, dependencies = {}) {
   const scanLocalWorkspace2 = dependencies.scanLocalWorkspace ?? scanLocalWorkspace;
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
@@ -25337,7 +25375,7 @@ async function scanCommand(configPath, dependencies = {}) {
   });
   const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
   const state = await loadState2(resolve7(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
-  await writeJson(join7(workspaceRoot, ".git-your-lark", "manifest.json"), {
+  await writeJson(join8(workspaceRoot, ".git-your-lark", "manifest.json"), {
     local,
     remote,
     state

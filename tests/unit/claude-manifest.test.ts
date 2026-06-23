@@ -36,13 +36,22 @@ function writeMarket(plugins: unknown[] = [{ name: "git-your-lark", source: "./"
   );
 }
 
+// Write the bundle fixture the way `npm run build:bundle` produces it:
+// `bin/gyl` (executable on POSIX) plus `bin/gyl.cmd` (the Windows PATH
+// launcher). Reflects the real artifact so "valid manifests" passes on every
+// platform.
+function writeBundleFixture() {
+  mkdirSync(join(root, "bin"), { recursive: true });
+  writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
+  chmodSync(join(root, "bin", "gyl"), 0o755);
+  writeFileSync(join(root, "bin", "gyl.cmd"), "@echo off\nnode \"%~dp0gyl\" %*\n");
+}
+
 describe("validateClaudePlugin (manifests)", () => {
   it("returns no errors for valid manifests", () => {
     writePlugin();
     writeMarket();
-    mkdirSync(join(root, "bin"), { recursive: true });
-    writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
-    chmodSync(join(root, "bin", "gyl"), 0o755);
+    writeBundleFixture();
     expect(validateClaudePlugin(root)).toEqual([]);
   });
 
@@ -51,6 +60,21 @@ describe("validateClaudePlugin (manifests)", () => {
     writeMarket();
     expect(
       validateClaudePlugin(root).some((e) => normalizeSlashes(e).includes("bin/gyl"))
+    ).toBe(true);
+  });
+
+  // On Windows the runnable entry point is bin/gyl.cmd (Windows ignores the
+  // shebang and cannot execute the extensionless bin/gyl from PATH). The
+  // validator must flag a missing gyl.cmd there; on POSIX this check is skipped
+  // so the test only runs on win32.
+  it.skipIf(process.platform !== "win32")("reports missing bin/gyl.cmd on Windows", () => {
+    writePlugin();
+    writeMarket();
+    mkdirSync(join(root, "bin"), { recursive: true });
+    writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
+    // Deliberately do NOT create bin/gyl.cmd.
+    expect(
+      validateClaudePlugin(root).some((e) => normalizeSlashes(e).includes("bin/gyl.cmd"))
     ).toBe(true);
   });
 
