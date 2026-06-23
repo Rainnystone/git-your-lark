@@ -189,6 +189,17 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
       };
     }
 
+    const contentProblems = validatePlannedContentHashes(renderPlannedFiles(proposal, fetchedByToken, proposal.createdAt));
+    if (contentProblems.length > 0) {
+      return {
+        ok: false,
+        status: "conflict",
+        problems: contentProblems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+
     const pulledAt = applyStartedAt.toISOString();
     const renderedFiles = renderPlannedFiles(proposal, fetchedByToken, pulledAt);
     const assetHashes = new Map<string, string>();
@@ -236,6 +247,7 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
       ...(proposal.source.title ? { remoteTitle: proposal.source.title } : {}),
       lastPulledAt: pulledAt
     };
+    pruneMovedPullState(nextState, renderedFiles, proposal.assets);
 
     for (const asset of proposal.assets) {
       nextState.pull.assets[asset.localPath] = {
@@ -348,6 +360,44 @@ function validateProposalSource(
     return undefined;
   }
   return `Pull proposal source does not match current config: expected ${expectedType} ${expectedTokenOrUrl}, found ${foundType} ${foundTokenOrUrl}`;
+}
+
+function validatePlannedContentHashes(renderedFiles: RenderedFile[]): string[] {
+  const problems: string[] = [];
+  for (const rendered of renderedFiles) {
+    if (!rendered.file.contentHash) {
+      if (!rendered.file.expectedRevisionId) {
+        problems.push(`Pull proposal is missing planned content hash for ${rendered.file.localPath}; regenerate pull preview.`);
+      }
+      continue;
+    }
+    if (rendered.hash !== rendered.file.contentHash) {
+      problems.push(`Remote document content changed since proposal for ${rendered.file.localPath}`);
+    }
+  }
+  return problems;
+}
+
+function pruneMovedPullState(
+  state: GitYourLarkRootState,
+  renderedFiles: RenderedFile[],
+  plannedAssets: PullPlannedAsset[]
+): void {
+  const plannedDocTokens = new Set(renderedFiles.map((rendered) => rendered.file.docToken));
+  const plannedDocumentPaths = new Set(renderedFiles.map((rendered) => rendered.file.localPath));
+  const plannedAssetPaths = new Set(plannedAssets.map((asset) => asset.localPath));
+
+  for (const [localPath, document] of Object.entries(state.pull.documents)) {
+    if (plannedDocTokens.has(document.docToken) && !plannedDocumentPaths.has(localPath)) {
+      delete state.pull.documents[localPath];
+    }
+  }
+
+  for (const [localPath, asset] of Object.entries(state.pull.assets)) {
+    if (plannedDocTokens.has(asset.ownerDocToken) && !plannedAssetPaths.has(localPath)) {
+      delete state.pull.assets[localPath];
+    }
+  }
 }
 
 async function backupFinalPaths(replacements: FinalReplacement[], pathSafety: PathSafetyContext): Promise<void> {

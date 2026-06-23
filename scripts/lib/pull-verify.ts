@@ -2,6 +2,7 @@ import { access, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { posix } from "node:path";
 import YAML from "yaml";
+import { sha256Buffer, sha256Text } from "./hash.js";
 import { parseMarkdownAttachments, stripCodeForParsing } from "./markdown-links.js";
 import type { GitYourLarkRootState } from "./state.js";
 
@@ -55,6 +56,9 @@ export async function verifyPullWorkspace(input: {
     }
 
     const markdown = await readFile(filePath.absolutePath, "utf8");
+    if (sha256Text(markdown) !== document.localHash) {
+      problems.push(`Pulled Markdown hash differs from state: ${filePath.relativePath}`);
+    }
     problems.push(...verifyFrontmatter(markdown, filePath.relativePath));
 
     if (markdown.includes("internal-api-drive-stream.feishu.cn")) {
@@ -83,7 +87,7 @@ export async function verifyPullWorkspace(input: {
   }
 
   for (const asset of Object.values(input.state.pull.assets)) {
-    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath);
+    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath, undefined, asset.hash);
     checkedAssets.add(assetProblem.relativePath);
     if (assetProblem.problem) {
       problems.push(assetProblem.problem);
@@ -153,7 +157,8 @@ async function verifyAssetPath(
   workspaceRoot: string,
   realWorkspaceRoot: string,
   localPath: string,
-  ownerDocumentPath?: string
+  ownerDocumentPath?: string,
+  expectedHash?: string
 ): Promise<{ relativePath: string; problem?: string }> {
   try {
     const safePath = safeWorkspacePath(workspaceRoot, localPath);
@@ -172,6 +177,9 @@ async function verifyAssetPath(
     const stats = await stat(safePath.absolutePath);
     if (!stats.isFile()) {
       return { relativePath: safePath.relativePath, problem: `Pulled asset path is not a file: ${safePath.relativePath}` };
+    }
+    if (expectedHash && sha256Buffer(await readFile(safePath.absolutePath)) !== expectedHash) {
+      return { relativePath: safePath.relativePath, problem: `Pulled asset hash differs from state: ${safePath.relativePath}` };
     }
     return { relativePath: safePath.relativePath };
   } catch (error) {

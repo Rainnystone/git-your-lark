@@ -243,6 +243,28 @@ describe("renderPullMarkdown", () => {
     expect(rendered.markdown).toContain("```\nhttps://example.feishu.cn/wiki/wiki_b\n```");
   });
 
+  it("renders duplicate-stem Lark references as path wiki links with readable labels", () => {
+    const rendered = renderPullMarkdown({
+      markdown: [
+        "# A",
+        "See [B](https://example.feishu.cn/wiki/wiki_b).",
+        'Also <cite type="doc" doc-id="doc_b"></cite>.',
+        ""
+      ].join("\n"),
+      remote: remoteDocument({ title: "A", docToken: "doc_a", remotePath: "Root/A" }),
+      plannedPath: "Root/A.md",
+      index: new Map([
+        ["wiki_b", { stem: "B", localPath: "Root/Section/B.md", wikiTarget: "Root/Section/B" }],
+        ["doc_b", { stem: "B", localPath: "Root/Section/B.md", wikiTarget: "Root/Section/B" }]
+      ]),
+      mediaPlans: [],
+      pulledAt: "2026-06-22T00:00:00.000Z"
+    });
+
+    expect(rendered.markdown).toContain("See [[Root/Section/B|B]].");
+    expect(rendered.markdown).toContain("Also [[Root/Section/B|B]].");
+  });
+
   it("converts import-set larksuite URLs to wiki links", () => {
     const rendered = renderPullMarkdown({
       markdown: "See [B](https://example.larksuite.com/wiki/wiki_b).",
@@ -314,6 +336,23 @@ describe("renderPullIndexMarkdown", () => {
         ""
       ].join("\n")
     );
+  });
+
+  it("uses path wiki links for duplicate child note names", () => {
+    const markdown = renderPullIndexMarkdown({
+      remote: remoteIndex({
+        childDocTokens: ["doc_a", "doc_b"]
+      }),
+      plannedPath: "Root.md",
+      index: new Map([
+        ["doc_a", { stem: "Same", localPath: "Root/A/Same.md", wikiTarget: "Root/A/Same" }],
+        ["doc_b", { stem: "Same", localPath: "Root/B/Same.md", wikiTarget: "Root/B/Same" }]
+      ]),
+      pulledAt: "2026-06-22T00:00:00.000Z"
+    });
+
+    expect(markdown).toContain("- [[Root/A/Same|Same]]");
+    expect(markdown).toContain("- [[Root/B/Same|Same]]");
   });
 });
 

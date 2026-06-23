@@ -2,23 +2,31 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sha256Buffer, sha256Text } from "../../scripts/lib/hash.js";
 import { verifyPullWorkspace } from "../../scripts/lib/pull-verify.js";
-import type { GitYourLarkRootState, PullDocumentState } from "../../scripts/lib/state.js";
+import type { GitYourLarkRootState, PullAssetState, PullDocumentState } from "../../scripts/lib/state.js";
 
 describe("verifyPullWorkspace", () => {
   it("passes a valid pulled document with gyl frontmatter and existing assets", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-valid-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "![Diagram](assets/故事块理论文献/image.webp)\n"
     });
     await writeWorkspaceFile(workspaceRoot, "参考资料/assets/故事块理论文献/image.webp", "asset");
+    const assetHash = sha256Buffer(Buffer.from("asset"));
 
     const verified = await verifyPullWorkspace({
       workspaceRoot,
       state: rootState({
         documents: {
           "参考资料/故事块理论文献.md": pullDocumentState({
+            localHash,
             assetPaths: ["参考资料/assets/故事块理论文献/image.webp"]
+          })
+        },
+        assets: {
+          "参考资料/assets/故事块理论文献/image.webp": pullAssetState({
+            hash: assetHash
           })
         }
       })
@@ -53,7 +61,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports a state document path that escapes the workspace without throwing", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-escaping-md-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "Body.\n"
     });
 
@@ -64,7 +72,7 @@ describe("verifyPullWorkspace", () => {
           "../outside.md": pullDocumentState({
             localPath: "../outside.md"
           }),
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -77,7 +85,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports a missing local asset referenced by generated Markdown", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-missing-asset-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "![Diagram](assets/故事块理论文献/image.webp)\n"
     });
 
@@ -85,7 +93,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -99,7 +107,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports a Markdown image path that escapes the workspace without throwing", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-escaping-image-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "![x](../../outside.png)\n"
     });
 
@@ -107,7 +115,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -119,7 +127,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports a missing regular local file link referenced by generated Markdown", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-missing-local-link-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "[附件](assets/故事块理论文献/source.pdf)\n"
     });
 
@@ -127,7 +135,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -141,7 +149,7 @@ describe("verifyPullWorkspace", () => {
 
   it("ignores regular external file links in generated Markdown", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-external-link-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "[附件](https://example.com/file.pdf)\n"
     });
 
@@ -149,7 +157,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -164,7 +172,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports a missing regular local file link with spaces and parentheses", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-local-link-spaces-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "[附件](assets/故事块理论文献/source file (draft).pdf)\n"
     });
 
@@ -172,7 +180,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -186,7 +194,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports generated Markdown that still contains a Feishu stream URL", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-stream-url-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "![Diagram](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/img_token)\n"
     });
 
@@ -194,7 +202,7 @@ describe("verifyPullWorkspace", () => {
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -207,7 +215,7 @@ describe("verifyPullWorkspace", () => {
 
   it("reports collection wiki links that point outside known pulled stems", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-wiki-link-"));
-    await writePulledMarkdown(workspaceRoot, {
+    const localHash = await writePulledMarkdown(workspaceRoot, {
       body: "See [[未知文档|label]].\n"
     });
 
@@ -221,7 +229,7 @@ describe("verifyPullWorkspace", () => {
           }
         },
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
         }
       })
     });
@@ -238,25 +246,22 @@ describe("verifyPullWorkspace", () => {
     ["gyl.pulled_at", ["  token: \"doc_theory\"", "  title: \"故事块理论文献\""]]
   ])("reports missing required %s frontmatter", async (field, gylLines) => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-frontmatter-"));
-    await writeWorkspaceFile(
-      workspaceRoot,
-      "参考资料/故事块理论文献.md",
-      [
-        "---",
-        "gyl:",
-        ...gylLines,
-        "---",
-        "",
-        "# 故事块理论文献",
-        ""
-      ].join("\n")
-    );
+    const markdown = [
+      "---",
+      "gyl:",
+      ...gylLines,
+      "---",
+      "",
+      "# 故事块理论文献",
+      ""
+    ].join("\n");
+    await writeWorkspaceFile(workspaceRoot, "参考资料/故事块理论文献.md", markdown);
 
     const verified = await verifyPullWorkspace({
       workspaceRoot,
       state: rootState({
         documents: {
-          "参考资料/故事块理论文献.md": pullDocumentState()
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash: sha256Text(markdown) })
         }
       })
     });
@@ -266,25 +271,77 @@ describe("verifyPullWorkspace", () => {
       `Missing required ${field} frontmatter in pulled Markdown: 参考资料/故事块理论文献.md`
     ]);
   });
+
+  it("reports pulled Markdown content that differs from the recorded state hash", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-md-hash-"));
+    await writePulledMarkdown(workspaceRoot, {
+      body: "Edited after pull.\n"
+    });
+
+    const verified = await verifyPullWorkspace({
+      workspaceRoot,
+      state: rootState({
+        documents: {
+          "参考资料/故事块理论文献.md": pullDocumentState({
+            localHash: sha256Text("original imported markdown\n")
+          })
+        }
+      })
+    });
+
+    expect(verified.ok).toBe(false);
+    expect(verified.problems).toEqual([
+      "Pulled Markdown hash differs from state: 参考资料/故事块理论文献.md"
+    ]);
+  });
+
+  it("reports pulled asset content that differs from the recorded state hash", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-verify-asset-hash-"));
+    const localHash = await writePulledMarkdown(workspaceRoot, {
+      body: "Body.\n"
+    });
+    await writeWorkspaceFile(workspaceRoot, "参考资料/assets/故事块理论文献/image.webp", "changed asset");
+
+    const verified = await verifyPullWorkspace({
+      workspaceRoot,
+      state: rootState({
+        documents: {
+          "参考资料/故事块理论文献.md": pullDocumentState({ localHash })
+        },
+        assets: {
+          "参考资料/assets/故事块理论文献/image.webp": pullAssetState({
+            hash: sha256Buffer(Buffer.from("original asset"))
+          })
+        }
+      })
+    });
+
+    expect(verified.ok).toBe(false);
+    expect(verified.problems).toEqual([
+      "Pulled asset hash differs from state: 参考资料/assets/故事块理论文献/image.webp"
+    ]);
+  });
 });
 
-async function writePulledMarkdown(workspaceRoot: string, input: { body: string }): Promise<void> {
-  await writeWorkspaceFile(
-    workspaceRoot,
-    "参考资料/故事块理论文献.md",
-    [
-      "---",
-      "gyl:",
-      "  token: \"doc_theory\"",
-      "  title: \"故事块理论文献\"",
-      "  pulled_at: \"2026-06-23T00:00:00.000Z\"",
-      "---",
-      "",
-      "# 故事块理论文献",
-      "",
-      input.body
-    ].join("\n")
-  );
+async function writePulledMarkdown(workspaceRoot: string, input: { body: string }): Promise<string> {
+  const markdown = pulledMarkdown(input);
+  await writeWorkspaceFile(workspaceRoot, "参考资料/故事块理论文献.md", markdown);
+  return sha256Text(markdown);
+}
+
+function pulledMarkdown(input: { body: string }): string {
+  return [
+    "---",
+    "gyl:",
+    "  token: \"doc_theory\"",
+    "  title: \"故事块理论文献\"",
+    "  pulled_at: \"2026-06-23T00:00:00.000Z\"",
+    "---",
+    "",
+    "# 故事块理论文献",
+    "",
+    input.body
+  ].join("\n");
 }
 
 async function writeWorkspaceFile(workspaceRoot: string, localPath: string, contents: string): Promise<void> {
@@ -322,6 +379,17 @@ function pullDocumentState(input: Partial<PullDocumentState> = {}): PullDocument
     remoteRevision: "rev_1",
     localHash: "hash",
     assetPaths: [],
+    ...input
+  };
+}
+
+function pullAssetState(input: Partial<PullAssetState> = {}): PullAssetState {
+  return {
+    sourceToken: "img_token",
+    sourceUrl: "https://stream/image",
+    localPath: "参考资料/assets/故事块理论文献/image.webp",
+    ownerDocToken: "doc_theory",
+    hash: sha256Buffer(Buffer.from("asset")),
     ...input
   };
 }

@@ -88,6 +88,27 @@ describe("planPullPaths", () => {
     ]);
   });
 
+  it("uses a stable collection root for a bare folder token without source title", () => {
+    const paths = planPullPaths({
+      scan: {
+        source: { type: "folder", tokenOrUrl: "fld_root" },
+        indexes: [],
+        documents: [
+          remoteDocument({ title: "B", docToken: "doc_b", remotePath: "B" }),
+          remoteDocument({ title: "A", docToken: "doc_a", remotePath: "A" })
+        ],
+        warnings: []
+      },
+      outputDir: "拉取",
+      namingRules: []
+    });
+
+    expect(paths.map((file) => file.localPath)).toEqual([
+      "拉取/folder-fld_root/B.md",
+      "拉取/folder-fld_root/A.md"
+    ]);
+  });
+
   it("maps title, token, and wikiNodeToken naming rules to custom local paths", () => {
     const paths = planPullPaths({
       scan: {
@@ -658,6 +679,36 @@ describe("buildPullLinkIndex", () => {
     expect(index.get("wiki_mask")).toEqual({
       stem: "EN《玫瑰面具》中的对话表现力",
       localPath: "参考资料/EN《玫瑰面具》中的对话表现力.md"
+    });
+  });
+
+  it("marks duplicate stems with path targets for unambiguous Obsidian links", () => {
+    const index = buildPullLinkIndex([
+      {
+        kind: "document",
+        title: "同名",
+        docToken: "doc_a",
+        remotePath: "参考资料/A/同名",
+        localPath: "参考资料/A/同名.md"
+      },
+      {
+        kind: "document",
+        title: "同名",
+        docToken: "doc_b",
+        remotePath: "参考资料/B/同名",
+        localPath: "参考资料/B/同名.md"
+      }
+    ]);
+
+    expect(index.get("doc_a")).toEqual({
+      stem: "同名",
+      localPath: "参考资料/A/同名.md",
+      wikiTarget: "参考资料/A/同名"
+    });
+    expect(index.get("doc_b")).toEqual({
+      stem: "同名",
+      localPath: "参考资料/B/同名.md",
+      wikiTarget: "参考资料/B/同名"
     });
   });
 });

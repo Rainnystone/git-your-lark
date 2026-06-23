@@ -257,7 +257,7 @@ export function planPullPaths(input: PlanPullPathsInput): PullPlannedFile[] {
     return input.scan.documents.map((document) => documentToPlannedFile(document, defaultSingleDocPath(outputDir, document), namingRules, outputDir));
   }
 
-  const sourceTitle = input.scan.source.title ?? input.scan.indexes[0]?.title ?? input.scan.documents[0]?.remotePath.split("/")[0] ?? "pull";
+  const sourceTitle = input.scan.source.title ?? input.scan.indexes[0]?.title ?? stableSourceFallbackName(input.scan.source);
   const sourceRoot = joinRelative(outputDir, cleanMarkdownFilename(sourceTitle));
   const files: PullPlannedFile[] = [];
 
@@ -274,10 +274,18 @@ export function planPullPaths(input: PlanPullPathsInput): PullPlannedFile[] {
 
 export function buildPullLinkIndex(files: PullPlannedFile[]): Map<string, PullLinkTarget> {
   const index = new Map<string, PullLinkTarget>();
+  const stemCounts = new Map<string, number>();
   for (const file of files) {
+    const stem = markdownStem(file.localPath);
+    stemCounts.set(stem, (stemCounts.get(stem) ?? 0) + 1);
+  }
+
+  for (const file of files) {
+    const stem = markdownStem(file.localPath);
     const target = {
-      stem: markdownStem(file.localPath),
-      localPath: file.localPath
+      stem,
+      localPath: file.localPath,
+      ...(stemCounts.get(stem) && stemCounts.get(stem)! > 1 ? { wikiTarget: markdownPathWithoutExtension(file.localPath) } : {})
     };
     index.set(file.docToken, target);
     if (file.wikiNodeToken) {
@@ -476,9 +484,22 @@ function renderList(items: string[]): string {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
+function stableSourceFallbackName(source: PullScanResult["source"]): string {
+  return `${source.type}-${stableTokenSlug(source.tokenOrUrl)}`;
+}
+
+function stableTokenSlug(tokenOrUrl: string): string {
+  const cleaned = cleanMarkdownFilename(tokenOrUrl.trim());
+  return cleaned.slice(0, 80) || "untitled";
+}
+
 function markdownStem(path: string): string {
   const basename = posix.basename(path);
   return basename.endsWith(".md") ? basename.slice(0, -3) : basename;
+}
+
+function markdownPathWithoutExtension(path: string): string {
+  return path.endsWith(".md") ? path.slice(0, -3) : path;
 }
 
 function joinRelative(...parts: string[]): string {

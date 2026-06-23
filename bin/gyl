@@ -22899,6 +22899,9 @@ function findBacktickRunEnd2(source, start) {
   return index;
 }
 function toWikiLink(target) {
+  if (target.wikiTarget && target.wikiTarget !== target.stem) {
+    return `[[${target.wikiTarget}|${target.stem}]]`;
+  }
   return `[[${target.stem}]]`;
 }
 function toIsoString(value) {
@@ -23079,7 +23082,7 @@ function planPullPaths(input) {
   if (input.scan.source.type === "doc") {
     return input.scan.documents.map((document) => documentToPlannedFile(document, defaultSingleDocPath(outputDir, document), namingRules, outputDir));
   }
-  const sourceTitle = input.scan.source.title ?? input.scan.indexes[0]?.title ?? input.scan.documents[0]?.remotePath.split("/")[0] ?? "pull";
+  const sourceTitle = input.scan.source.title ?? input.scan.indexes[0]?.title ?? stableSourceFallbackName(input.scan.source);
   const sourceRoot = joinRelative(outputDir, cleanMarkdownFilename(sourceTitle));
   const files = [];
   for (const index of input.scan.indexes) {
@@ -23092,10 +23095,17 @@ function planPullPaths(input) {
 }
 function buildPullLinkIndex(files) {
   const index = /* @__PURE__ */ new Map();
+  const stemCounts = /* @__PURE__ */ new Map();
   for (const file of files) {
+    const stem2 = markdownStem(file.localPath);
+    stemCounts.set(stem2, (stemCounts.get(stem2) ?? 0) + 1);
+  }
+  for (const file of files) {
+    const stem2 = markdownStem(file.localPath);
     const target = {
-      stem: markdownStem(file.localPath),
-      localPath: file.localPath
+      stem: stem2,
+      localPath: file.localPath,
+      ...stemCounts.get(stem2) && stemCounts.get(stem2) > 1 ? { wikiTarget: markdownPathWithoutExtension(file.localPath) } : {}
     };
     index.set(file.docToken, target);
     if (file.wikiNodeToken) {
@@ -23259,9 +23269,19 @@ function renderList2(items) {
   }
   return items.map((item) => `- ${item}`).join("\n");
 }
+function stableSourceFallbackName(source) {
+  return `${source.type}-${stableTokenSlug(source.tokenOrUrl)}`;
+}
+function stableTokenSlug(tokenOrUrl) {
+  const cleaned = cleanMarkdownFilename(tokenOrUrl.trim());
+  return cleaned.slice(0, 80) || "untitled";
+}
 function markdownStem(path) {
   const basename3 = posix3.basename(path);
   return basename3.endsWith(".md") ? basename3.slice(0, -3) : basename3;
+}
+function markdownPathWithoutExtension(path) {
+  return path.endsWith(".md") ? path.slice(0, -3) : path;
 }
 function joinRelative(...parts) {
   return normalizeRelativePath(posix3.join(...parts.filter((part) => part !== "")));
@@ -23395,6 +23415,16 @@ async function applyPullProposal(options) {
         writtenAssets
       };
     }
+    const contentProblems = validatePlannedContentHashes(renderPlannedFiles(proposal, fetchedByToken, proposal.createdAt));
+    if (contentProblems.length > 0) {
+      return {
+        ok: false,
+        status: "conflict",
+        problems: contentProblems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
     const pulledAt = applyStartedAt.toISOString();
     const renderedFiles = renderPlannedFiles(proposal, fetchedByToken, pulledAt);
     const assetHashes = /* @__PURE__ */ new Map();
@@ -23438,6 +23468,7 @@ async function applyPullProposal(options) {
       ...proposal.source.title ? { remoteTitle: proposal.source.title } : {},
       lastPulledAt: pulledAt
     };
+    pruneMovedPullState(nextState, renderedFiles, proposal.assets);
     for (const asset of proposal.assets) {
       nextState.pull.assets[asset.localPath] = {
         ...asset.sourceToken ? { sourceToken: asset.sourceToken } : {},
@@ -23541,6 +23572,36 @@ function validateProposalSource(proposal, pullConfig) {
     return void 0;
   }
   return `Pull proposal source does not match current config: expected ${expectedType} ${expectedTokenOrUrl}, found ${foundType} ${foundTokenOrUrl}`;
+}
+function validatePlannedContentHashes(renderedFiles) {
+  const problems = [];
+  for (const rendered of renderedFiles) {
+    if (!rendered.file.contentHash) {
+      if (!rendered.file.expectedRevisionId) {
+        problems.push(`Pull proposal is missing planned content hash for ${rendered.file.localPath}; regenerate pull preview.`);
+      }
+      continue;
+    }
+    if (rendered.hash !== rendered.file.contentHash) {
+      problems.push(`Remote document content changed since proposal for ${rendered.file.localPath}`);
+    }
+  }
+  return problems;
+}
+function pruneMovedPullState(state, renderedFiles, plannedAssets) {
+  const plannedDocTokens = new Set(renderedFiles.map((rendered) => rendered.file.docToken));
+  const plannedDocumentPaths = new Set(renderedFiles.map((rendered) => rendered.file.localPath));
+  const plannedAssetPaths = new Set(plannedAssets.map((asset) => asset.localPath));
+  for (const [localPath, document] of Object.entries(state.pull.documents)) {
+    if (plannedDocTokens.has(document.docToken) && !plannedDocumentPaths.has(localPath)) {
+      delete state.pull.documents[localPath];
+    }
+  }
+  for (const [localPath, asset] of Object.entries(state.pull.assets)) {
+    if (plannedDocTokens.has(asset.ownerDocToken) && !plannedAssetPaths.has(localPath)) {
+      delete state.pull.assets[localPath];
+    }
+  }
 }
 async function backupFinalPaths(replacements, pathSafety) {
   for (const replacement of replacements) {
@@ -24357,6 +24418,9 @@ async function verifyPullWorkspace(input) {
       continue;
     }
     const markdown = await readFile4(filePath.absolutePath, "utf8");
+    if (sha256Text(markdown) !== document.localHash) {
+      problems.push(`Pulled Markdown hash differs from state: ${filePath.relativePath}`);
+    }
     problems.push(...verifyFrontmatter(markdown, filePath.relativePath));
     if (markdown.includes("internal-api-drive-stream.feishu.cn")) {
       problems.push(`Generated Markdown contains unreplaced Feishu stream URL: ${filePath.relativePath}`);
@@ -24381,7 +24445,7 @@ async function verifyPullWorkspace(input) {
     }
   }
   for (const asset of Object.values(input.state.pull.assets)) {
-    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath);
+    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath, void 0, asset.hash);
     checkedAssets.add(assetProblem.relativePath);
     if (assetProblem.problem) {
       problems.push(assetProblem.problem);
@@ -24437,7 +24501,7 @@ function referencedAssetPaths(documentPath, markdown) {
   ];
   return targets.map((target) => resolveMarkdownTarget(documentPath, target));
 }
-async function verifyAssetPath(workspaceRoot, realWorkspaceRoot, localPath, ownerDocumentPath) {
+async function verifyAssetPath(workspaceRoot, realWorkspaceRoot, localPath, ownerDocumentPath, expectedHash) {
   try {
     const safePath = safeWorkspacePath2(workspaceRoot, localPath);
     const missingMessage = ownerDocumentPath ? `Missing local asset referenced by ${ownerDocumentPath}: ${safePath.relativePath}` : `Missing pulled asset file: ${safePath.relativePath}`;
@@ -24451,6 +24515,9 @@ async function verifyAssetPath(workspaceRoot, realWorkspaceRoot, localPath, owne
     const stats = await stat(safePath.absolutePath);
     if (!stats.isFile()) {
       return { relativePath: safePath.relativePath, problem: `Pulled asset path is not a file: ${safePath.relativePath}` };
+    }
+    if (expectedHash && sha256Buffer(await readFile4(safePath.absolutePath)) !== expectedHash) {
+      return { relativePath: safePath.relativePath, problem: `Pulled asset hash differs from state: ${safePath.relativePath}` };
     }
     return { relativePath: safePath.relativePath };
   } catch (error) {

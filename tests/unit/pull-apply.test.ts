@@ -1,12 +1,13 @@
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyPullProposal, type ApplyPullOptions } from "../../scripts/lib/pull-apply.js";
 import { sha256Buffer, sha256Text } from "../../scripts/lib/hash.js";
 import type { CommandResult } from "../../scripts/lib/lark-cli.js";
-import type { PullProposal } from "../../scripts/lib/pull-proposal.js";
+import { buildPullLinkIndex, type PullProposal } from "../../scripts/lib/pull-proposal.js";
+import { renderPullIndexMarkdown, renderPullMarkdown } from "../../scripts/lib/pull-render.js";
 import type { GitYourLarkRootState, PullAssetState, PullDocumentState } from "../../scripts/lib/state.js";
 
 type ApplyRun = NonNullable<ApplyPullOptions["run"]>;
@@ -113,6 +114,78 @@ describe("applyPullProposal", () => {
         "json"
       ]
     ]);
+    expect(existsSync(join(workspaceRoot, "参考资料", "故事块理论文献.md"))).toBe(false);
+  });
+
+  it("refuses to apply when previewed content hash changes even without a pinned revision", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-content-hash-"));
+    const configPath = await writeConfig(workspaceRoot);
+    const file = plannedDocument({ expectedRevisionId: undefined });
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        files: [
+          {
+            ...file,
+            contentHash: reviewedDocumentContentHash(file, "# 故事块理论文献\n\nReviewed content\n")
+          }
+        ]
+      })
+    );
+    const run = vi.fn<ApplyRun>(async (_command, args) =>
+      fetchResultWithMarkdown(args, { markdown: "# 故事块理论文献\n\nChanged after preview\n" })
+    );
+    const saveRootState = vi.fn<NonNullable<ApplyPullOptions["saveRootState"]>>(async () => undefined);
+
+    const applied = await applyPullProposal({
+      proposalPath,
+      configPath,
+      run,
+      loadRootState: async () => rootState(),
+      saveRootState
+    });
+
+    expect(applied).toEqual({
+      ok: false,
+      status: "conflict",
+      problems: ["Remote document content changed since proposal for 参考资料/故事块理论文献.md"],
+      writtenFiles: [],
+      writtenAssets: []
+    });
+    expect(saveRootState).not.toHaveBeenCalled();
+    expect(existsSync(join(workspaceRoot, "参考资料", "故事块理论文献.md"))).toBe(false);
+  });
+
+  it("refuses old proposals that do not include a planned content hash", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-missing-content-hash-"));
+    const configPath = await writeConfig(workspaceRoot);
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        files: [plannedDocument({ expectedRevisionId: undefined, contentHash: undefined })]
+      })
+    );
+    const run = vi.fn<ApplyRun>(async (_command, args) =>
+      fetchResultWithMarkdown(args, { markdown: "# 故事块理论文献\n\nReviewed content\n" })
+    );
+    const saveRootState = vi.fn<NonNullable<ApplyPullOptions["saveRootState"]>>(async () => undefined);
+
+    const applied = await applyPullProposal({
+      proposalPath,
+      configPath,
+      run,
+      loadRootState: async () => rootState(),
+      saveRootState
+    });
+
+    expect(applied).toEqual({
+      ok: false,
+      status: "conflict",
+      problems: ["Pull proposal is missing planned content hash for 参考资料/故事块理论文献.md; regenerate pull preview."],
+      writtenFiles: [],
+      writtenAssets: []
+    });
+    expect(saveRootState).not.toHaveBeenCalled();
     expect(existsSync(join(workspaceRoot, "参考资料", "故事块理论文献.md"))).toBe(false);
   });
 
@@ -317,6 +390,63 @@ describe("applyPullProposal", () => {
     });
   });
 
+  it("prunes stale pull state entries when a document moves to a new local path", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-moved-state-"));
+    const configPath = await writeConfig(workspaceRoot);
+    const proposalPath = await writeProposal(
+      workspaceRoot,
+      proposal({
+        files: [plannedDocument({ localPath: "参考资料/新标题.md" })],
+        assets: [plannedAsset({ localPath: "参考资料/assets/新标题/image.webp" })]
+      })
+    );
+    const run = vi.fn<ApplyRun>(async (_command, args, cwd) => {
+      if (args.includes("+media-download")) {
+        await writeFile(join(cwd ?? workspaceRoot, args[args.indexOf("--output") + 1]), "asset bytes");
+        return result();
+      }
+      return fetchResult(args, { revisionId: "rev_1" });
+    });
+    const saved: GitYourLarkRootState[] = [];
+
+    const applied = await applyPullProposal({
+      proposalPath,
+      configPath,
+      run,
+      loadRootState: async () =>
+        rootState({
+          documents: {
+            "参考资料/旧标题.md": pullDocumentState({
+              localPath: "参考资料/旧标题.md",
+              assetPaths: ["参考资料/assets/旧标题/image.webp"]
+            })
+          },
+          assets: {
+            "参考资料/assets/旧标题/image.webp": pullAssetState({
+              localPath: "参考资料/assets/旧标题/image.webp"
+            })
+          }
+        }),
+      saveRootState: async (_path, state) => {
+        saved.push(state);
+      },
+      now: () => new Date("2026-06-23T00:00:00.000Z")
+    });
+
+    expect(applied).toMatchObject({ ok: true, status: "applied" });
+    expect(saved).toHaveLength(1);
+    expect(saved[0].pull.documents["参考资料/旧标题.md"]).toBeUndefined();
+    expect(saved[0].pull.assets["参考资料/assets/旧标题/image.webp"]).toBeUndefined();
+    expect(saved[0].pull.documents["参考资料/新标题.md"]).toMatchObject({
+      docToken: "doc_theory",
+      localPath: "参考资料/新标题.md"
+    });
+    expect(saved[0].pull.assets["参考资料/assets/新标题/image.webp"]).toMatchObject({
+      ownerDocToken: "doc_theory",
+      localPath: "参考资料/assets/新标题/image.webp"
+    });
+  });
+
   it("renders index Markdown from proposal childDocTokens instead of remotePath prefix inference", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-index-children-"));
     const configPath = await writeConfig(workspaceRoot);
@@ -342,7 +472,7 @@ describe("applyPullProposal", () => {
         ]
       })
     );
-    const run = vi.fn<ApplyRun>(async () => fetchResult([], { revisionId: "rev_1" }));
+    const run = vi.fn<ApplyRun>(async (_command, args) => fetchResult(args, { revisionId: "rev_1" }));
 
     const applied = await applyPullProposal({
       proposalPath,
@@ -622,16 +752,18 @@ async function writeProposal(workspaceRoot: string, value: PullProposal): Promis
 }
 
 function proposal(input: Partial<PullProposal> = {}): PullProposal {
-  return {
+  const files = addDefaultContentHashes(input.files ?? [], input.assets ?? []);
+  const base = {
     id: "pull-proposal-test",
     createdAt: "2026-06-22T00:00:00.000Z",
-    source: { type: "wiki_node", tokenOrUrl: "wiki_parent", title: "参考资料" },
+    source: { type: "wiki_node" as const, tokenOrUrl: "wiki_parent", title: "参考资料" },
     files: [],
     assets: [],
     blockers: [],
     warnings: [],
     ...input
   };
+  return { ...base, files };
 }
 
 function plannedDocument(input: Partial<PullProposal["files"][number]> = {}): PullProposal["files"][number] {
@@ -701,6 +833,122 @@ function fetchResult(args: string[], input: { revisionId: string }): CommandResu
       }
     })
   });
+}
+
+function fetchResultWithMarkdown(args: string[], input: { markdown: string; revisionId?: string }): CommandResult {
+  if (args.includes("markdown")) {
+    return result({
+      stdout: JSON.stringify({
+        data: {
+          document: {
+            content: input.markdown,
+            ...(input.revisionId ? { revision_id: input.revisionId } : {})
+          }
+        }
+      })
+    });
+  }
+  return result({
+    stdout: JSON.stringify({
+      data: {
+        document: {
+          content: "<document><title>故事块理论文献</title></document>",
+          ...(input.revisionId ? { revision_id: input.revisionId } : {})
+        }
+      }
+    })
+  });
+}
+
+function addDefaultContentHashes(files: PullProposal["files"], assets: PullProposal["assets"]): PullProposal["files"] {
+  const index = buildPullLinkIndex(files);
+  return files.map((file) => {
+    if (Object.prototype.hasOwnProperty.call(file, "contentHash")) {
+      return file;
+    }
+    if (file.kind === "index") {
+      return {
+        ...file,
+        contentHash: reviewedIndexContentHash(file, files, index)
+      };
+    }
+    return {
+      ...file,
+      contentHash: reviewedDocumentContentHash(
+        file,
+        "# 故事块理论文献\n\n![A](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/img_token)\n",
+        assets.filter((asset) => asset.ownerDocToken === file.docToken)
+      )
+    };
+  });
+}
+
+function reviewedDocumentContentHash(
+  file: PullProposal["files"][number],
+  markdown: string,
+  assets: PullProposal["assets"] = []
+): string {
+  return sha256Text(
+    renderPullMarkdown({
+      markdown,
+      remote: {
+        sourceKind: "wiki_node",
+        title: "故事块理论文献",
+        docToken: file.docToken,
+        ...(file.wikiNodeToken ? { wikiNodeToken: file.wikiNodeToken } : {}),
+        ...(file.sourceUrl ? { sourceUrl: file.sourceUrl } : {}),
+        remotePath: file.remotePath
+      },
+      plannedPath: file.localPath,
+      index: buildPullLinkIndex([file]),
+      mediaPlans: assets.map((asset) => ({
+        kind: asset.kind,
+        name: asset.name,
+        alt: asset.kind === "image" ? "A" : "",
+        ...(asset.sourceToken ? { sourceToken: asset.sourceToken } : {}),
+        ...(asset.sourceHref ? { sourceHref: asset.sourceHref } : {}),
+        localPath: normalizeRelativePath(posix.relative(posix.dirname(file.localPath), asset.localPath))
+      })),
+      pulledAt: "2026-06-22T00:00:00.000Z"
+    }).markdown
+  );
+}
+
+function reviewedIndexContentHash(
+  file: PullProposal["files"][number],
+  files: PullProposal["files"],
+  index: ReturnType<typeof buildPullLinkIndex>
+): string {
+  return sha256Text(
+    renderPullIndexMarkdown({
+      remote: {
+        title: "故事块理论文献",
+        docToken: file.docToken,
+        ...(file.wikiNodeToken ? { wikiNodeToken: file.wikiNodeToken } : {}),
+        ...(file.sourceUrl ? { sourceUrl: file.sourceUrl } : {}),
+        remotePath: file.remotePath,
+        childDocTokens: file.childDocTokens ?? defaultIndexChildDocTokens(file, files)
+      },
+      plannedPath: file.localPath,
+      index,
+      pulledAt: "2026-06-22T00:00:00.000Z"
+    })
+  );
+}
+
+function defaultIndexChildDocTokens(indexFile: PullProposal["files"][number], files: PullProposal["files"]): string[] {
+  const childPrefix = `${indexFile.remotePath.replace(/\/+$/g, "")}/`;
+  const directChildren = files
+    .filter((file) => file.kind === "document" && file.remotePath.startsWith(childPrefix))
+    .map((file) => file.docToken);
+  if (directChildren.length > 0) {
+    return directChildren;
+  }
+  return files.filter((file) => file.kind === "document").map((file) => file.docToken);
+}
+
+function normalizeRelativePath(path: string): string {
+  return posix.normalize(path.replace(/\\/g, "/")).replace(/^\.\//, "");
 }
 
 function rootState(input: { documents?: Record<string, PullDocumentState>; assets?: Record<string, PullAssetState> } = {}): GitYourLarkRootState {

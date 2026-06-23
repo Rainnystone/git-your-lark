@@ -3,6 +3,7 @@ import type { PullRemoteDocument, PullRemoteIndex } from "./pull-types.js";
 export interface PullLinkTarget {
   stem: string;
   localPath: string;
+  wikiTarget?: string;
 }
 
 export interface PullMediaPlan {
@@ -441,6 +442,9 @@ function findBacktickRunEnd(source: string, start: number): number {
 }
 
 function toWikiLink(target: PullLinkTarget): string {
+  if (target.wikiTarget && target.wikiTarget !== target.stem) {
+    return `[[${target.wikiTarget}|${target.stem}]]`;
+  }
   return `[[${target.stem}]]`;
 }
 
