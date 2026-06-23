@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,6 +33,13 @@ function commandResult(result: Partial<CommandResult>): CommandResult {
   };
 }
 
+function runGyl(args: string[]) {
+  return spawnSync(process.execPath, ["./node_modules/.bin/tsx", "scripts/gyl.ts", ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+}
+
 describe("renderInitConfig", () => {
   it("includes remote folder token/url, lark doc references, and explicit-only overwrite policy", () => {
     const yaml = renderInitConfig({
@@ -45,6 +53,38 @@ describe("renderInitConfig", () => {
     expect(yaml).toContain("referenceMode: lark-doc-cite");
     expect(yaml).toContain("overwritePolicy: explicit-only");
     expect(yaml).not.toContain("retries:");
+  });
+
+  it("renders a pull block for wiki node imports", () => {
+    const yaml = renderInitConfig({
+      workspaceRoot: ".",
+      pullSourceType: "wiki_node",
+      pullSourceTokenOrUrl: "https://example.feishu.cn/wiki/wiki_token",
+      pullOutputDir: "."
+    });
+
+    expect(yaml).toContain("pull:");
+    expect(yaml).toContain('type: "wiki_node"');
+    expect(yaml).toContain('tokenOrUrl: "https://example.feishu.cn/wiki/wiki_token"');
+    expect(yaml).toContain('outputDir: "."');
+  });
+
+  it("renders both publish and pull sections when both are configured", () => {
+    const yaml = renderInitConfig({
+      remoteFolderToken: "fld_token",
+      remoteFolderUrl: "https://example.feishu.cn/drive/folder/fld_token",
+      workspaceRoot: ".",
+      pullSourceType: "doc",
+      pullSourceTokenOrUrl: "https://example.feishu.cn/docx/doc_token",
+      pullOutputDir: "Imported"
+    });
+
+    const config = parseConfig(yaml);
+    expect(config.remoteFolderToken).toBe("fld_token");
+    expect(config.remoteFolderUrl).toBe("https://example.feishu.cn/drive/folder/fld_token");
+    expect(config.pull?.source.type).toBe("doc");
+    expect(config.pull?.source.tokenOrUrl).toBe("https://example.feishu.cn/docx/doc_token");
+    expect(config.pull?.outputDir).toBe("Imported");
   });
 
   it("builds create-folder args for first publish under user drive root", () => {
@@ -101,6 +141,51 @@ describe("renderInitConfig", () => {
       outputPath: path
     })).resolves.toBe(1);
     await expect(readFile(path, "utf8")).resolves.toBe("remoteFolderToken: old\n");
+  });
+
+  it("writes pull-only config without a publish remote folder", async () => {
+    const path = outputPath();
+
+    await expect(initCommand({
+      pullSourceType: "folder",
+      pullSourceTokenOrUrl: "fld_source",
+      pullOutputDir: "Imported",
+      outputPath: path
+    })).resolves.toBe(0);
+
+    const config = parseConfig(await readFile(path, "utf8"));
+    expect(config.remoteFolderToken).toBeUndefined();
+    expect(config.pull?.source.type).toBe("folder");
+    expect(config.pull?.source.tokenOrUrl).toBe("fld_source");
+    expect(config.pull?.outputDir).toBe("Imported");
+  });
+
+  it("requires pull source when pull source type is supplied", async () => {
+    const path = outputPath();
+
+    await expect(initCommand({
+      pullSourceType: "doc",
+      outputPath: path
+    })).resolves.toBe(1);
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it("requires pull source type when pull source is supplied", async () => {
+    const path = outputPath();
+
+    await expect(initCommand({
+      pullSourceTokenOrUrl: "https://example.feishu.cn/docx/doc_token",
+      outputPath: path
+    })).resolves.toBe(1);
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it("keeps the publish-first error when no publish or pull options are supplied", async () => {
+    const path = outputPath();
+
+    await expect(initCommand({ outputPath: path })).resolves.toBe(1);
+    expect(console.error).toHaveBeenCalledWith("Missing --remote-folder-token. For first publish, pass --create-remote-folder --folder-name <name>.");
+    expect(existsSync(path)).toBe(false);
   });
 
   it("overwrites an existing config when force is set", async () => {
@@ -172,5 +257,28 @@ describe("renderInitConfig", () => {
     expect(config.remoteFolderUrl).toBe("https://example/fld_new");
     expect(config.referenceMode).toBe("lark-doc-cite");
     expect(config.overwritePolicy).toBe("explicit-only");
+  });
+
+  it("accepts pull init CLI options for doc, folder, and wiki_node sources", async () => {
+    for (const type of ["doc", "folder", "wiki_node"]) {
+      const path = outputPath(`${type}.yml`);
+      const result = runGyl([
+        "init",
+        "--pull-source-type",
+        type,
+        "--pull-source",
+        `https://example.feishu.cn/${type}/token`,
+        "--pull-output-dir",
+        "Imported",
+        "--output",
+        path
+      ]);
+
+      expect(result.status).toBe(0);
+      const config = parseConfig(await readFile(path, "utf8"));
+      expect(config.pull?.source.type).toBe(type);
+      expect(config.pull?.source.tokenOrUrl).toBe(`https://example.feishu.cn/${type}/token`);
+      expect(config.pull?.outputDir).toBe("Imported");
+    }
   });
 });

@@ -11,8 +11,8 @@ const program = new Command();
 
 program
   .name("gyl")
-  .description("Preview-first Markdown workspace publishing to Lark/Feishu.")
-  .version("0.2.0");
+  .description("Preview-first Markdown workspace publishing and importing for Lark/Feishu.")
+  .version("0.3.0");
 
 program
   .command("doctor")
@@ -29,6 +29,9 @@ program
   .option("--create-remote-folder", "Create a new target Lark Drive folder for first publish", false)
   .option("--folder-name <name>", "Folder name to create when --create-remote-folder is set")
   .option("--parent-folder-token <token>", "Optional parent folder token for the new remote folder")
+  .option("--pull-source-type <doc|folder|wiki_node>", "Source type for Lark-to-Obsidian imports")
+  .option("--pull-source <url-or-token>", "Source Lark/Feishu URL or token for imports")
+  .option("--pull-output-dir <path>", "Local output directory for imported Markdown")
   .option("-o, --output <path>", "Config output path", "git-your-lark.yml")
   .option("-w, --workspace-root <path>", "Local workspace root", ".")
   .option("--force", "Overwrite an existing config file", false)
@@ -39,6 +42,9 @@ program
       createRemoteFolder: options.createRemoteFolder,
       folderName: options.folderName,
       parentFolderToken: options.parentFolderToken,
+      pullSourceType: options.pullSourceType,
+      pullSourceTokenOrUrl: options.pullSource,
+      pullOutputDir: options.pullOutputDir,
       outputPath: options.output,
       workspaceRoot: options.workspaceRoot,
       force: options.force

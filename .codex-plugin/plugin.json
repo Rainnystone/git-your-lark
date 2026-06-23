@@ -1,7 +1,7 @@
 {
   "name": "git-your-lark",
-  "version": "0.2.0",
-  "description": "Preview-first Markdown workspace publishing to Lark/Feishu through lark-cli.",
+  "version": "0.3.0",
+  "description": "Preview-first Markdown workspace publishing and importing for Lark/Feishu through lark-cli.",
   "author": {
     "name": "Rainnystone",
     "url": "https://github.com/Rainnystone"
@@ -12,14 +12,15 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Git Your Lark",
-    "shortDescription": "Publish Markdown workspaces to Lark with reviewable sync previews.",
-    "longDescription": "Git Your Lark is a Codex plugin that uses lark-cli to publish local Markdown workspaces into Lark/Feishu documents. It generates reviewable sync previews before publishing changes and verifies remote documents after sync.",
+    "shortDescription": "Publish and import Markdown workspaces with Lark using reviewable previews.",
+    "longDescription": "Git Your Lark is a Codex plugin that uses lark-cli to publish local Markdown workspaces into Lark/Feishu documents and import reviewed Lark content back into Markdown. It generates reviewable previews before publishing or applying changes and verifies results after sync.",
     "developerName": "Rainnystone",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [
       "Sync this Markdown workspace to Lark.",
       "Preview this Lark sync before publishing.",
+      "Pull this Lark wiki into Obsidian with a preview first.",
       "Verify my Lark workspace sync."
     ],
     "brandColor": "#2563EB"

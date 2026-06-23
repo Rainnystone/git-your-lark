@@ -2,9 +2,9 @@
 
 中文 | [English](./README.md)
 
-Git Your Lark 是一个 Codex 和 Claude Code 都能用的 plugin 和 agent skill，用来把本地 Markdown 或 Obsidian 工作区发布到飞书 / Lark 云文档。它使用官方 `lark-cli`，把 Markdown 转成飞书 docx 文档，而不是把 `.md` 当普通文件传上去；本地文档之间的链接也会尽量变成飞书里能点击跳转的文档引用。
+Git Your Lark 是一个 Codex 和 Claude Code 都能用的 plugin 和 agent skill，用来把本地 Markdown 或 Obsidian 工作区发布到飞书 / Lark 云文档，也可以把确认过的飞书文档拉回本地 Markdown。它使用官方 `lark-cli`，把 Markdown 转成飞书 docx 文档，而不是把 `.md` 当普通文件传上去；本地文档之间的链接也会尽量变成飞书里能点击跳转的文档引用。
 
-如果你在找一个 AI agent 可以用的飞书同步工具，想把 Obsidian 笔记、Markdown 文档库、本地 docs 文件夹发布到飞书，这个 repo 就是为这个场景做的。
+如果你在找一个 AI agent 可以用的飞书同步工具，想把 Obsidian 笔记、Markdown 文档库、本地 docs 文件夹发布到飞书，或把飞书文档拉回 Obsidian，这个 repo 就是为这个场景做的。
 
 ## 这个工具适合谁
 
@@ -25,6 +25,8 @@ Git Your Lark 解决的是这个中间层。
 - 同步前看不到会改哪些东西。
 
 Git Your Lark 的默认逻辑是：先预览，再发布，发布后再验证。本地 Markdown 是权威来源，但工具不会在不确认的情况下静默写远端。
+
+从飞书拉回 Obsidian 时也一样：先生成预览，确认后再 apply，最后验证结果。它不会替你静默合并两边同时发生的改动。
 
 ## 实际使用时是什么感觉
 
@@ -70,13 +72,17 @@ skill 会接手剩下的流程：
 先生成预览，再更新我的飞书 workspace。
 ```
 
+```text
+把这个飞书 wiki 页面拉回我的 Obsidian vault，但先给我看预览。
+```
+
 ## 它不会做什么
 
 v1 的范围故意收得比较窄。
 
 - 不设置飞书分享权限，不开公开链接。
 - 不自动删除或归档远端多出来的文档。
-- 不把飞书里的改动同步回本地 Markdown。
+- 不自动合并双向编辑。
 - 不做完整的 GitHub PR 系统。
 - 不自动合并远端人工编辑。
 - 不保存飞书 access token。认证交给 `lark-cli`。
@@ -91,6 +97,7 @@ v1 的范围故意收得比较窄。
 - 把本地文档引用渲染成飞书文档引用
 - publish / apply / merge 命令
 - 发布后验证
+- 从飞书拉回 Obsidian 的 pull preview / apply / verify
 - Codex skill 使用说明
 - Claude Code plugin 支持（marketplace 安装）
 - `gyl` CLI 的打包检查
@@ -191,6 +198,34 @@ gyl verify -c git-your-lark.yml
 
 `apply` 和 `merge` 是高级别名，含义是发布一份已经确认过的 proposal。它们不是 GitHub PR 命令。
 
+## 从 Lark 拉回 Obsidian
+
+当你希望把飞书 doc、文件夹或 wiki 节点变成本地 Markdown 时，使用 pull 流程。可以手动在 `git-your-lark.yml` 里添加 `pull:` 配置，也可以用 init 参数生成：
+
+```bash
+gyl init --pull-source-type wiki_node --pull-source https://example.feishu.cn/wiki/wiki_token
+```
+
+生成拉取预览：
+
+```bash
+gyl pull preview -c git-your-lark.yml
+```
+
+先读生成的预览。如果里面有 blocker，先处理 blocker，或者让 agent 用人能看懂的话解释原因。
+
+确认后再 apply 已经审阅过的 JSON proposal：
+
+```bash
+gyl pull apply .git-your-lark/proposals/<proposal-id>.json -c git-your-lark.yml
+```
+
+验证导入后的 Markdown 和附件：
+
+```bash
+gyl pull verify -c git-your-lark.yml
+```
+
 ## 配置说明
 
 `git-your-lark.yml` 里常用字段如下：
@@ -198,6 +233,11 @@ gyl verify -c git-your-lark.yml
 ```yaml
 workspaceRoot: .
 remoteFolderToken: fld_replace_with_lark_folder_token
+# pull:
+#   source:
+#     type: wiki_node
+#     tokenOrUrl: https://example.feishu.cn/wiki/wiki_replace_with_node_token
+#   outputDir: .
 include:
   - "**/*.md"
 exclude:

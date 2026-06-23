@@ -6995,10 +6995,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -7012,7 +7012,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep2) {
+          if (!keyProps.anchor && !keyProps.tag && !sep5) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -7036,7 +7036,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep5 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -7052,7 +7052,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep5, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -7143,7 +7143,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep2 = "";
+        let sep5 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -7157,13 +7157,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep2 + cb;
-              sep2 = "";
+                comment += sep5 + cb;
+              sep5 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep2 += source;
+                sep5 += source;
               hasSpace = true;
               break;
             default:
@@ -7206,18 +7206,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep2 && !value) {
+          if (!props.anchor && !props.tag && !sep5 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -7271,8 +7271,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep2 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
+        if (!isMap && !sep5 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep5, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -7284,7 +7284,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep5 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -7295,8 +7295,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep2)
-                for (const st of sep2) {
+              if (sep5)
+                for (const st of sep5) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -7313,7 +7313,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep5, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -7448,7 +7448,7 @@ var require_resolve_block_scalar = __commonJS({
       if (!header)
         return { value: "", type: null, comment: "", range: [start, start, start] };
       const type = header.mode === ">" ? Scalar.Scalar.BLOCK_FOLDED : Scalar.Scalar.BLOCK_LITERAL;
-      const lines = scalar.source ? splitLines2(scalar.source) : [];
+      const lines = scalar.source ? splitLines3(scalar.source) : [];
       let chompStart = lines.length;
       for (let i = lines.length - 1; i >= 0; --i) {
         const content = lines[i][1];
@@ -7493,7 +7493,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep2 = "";
+      let sep5 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -7510,24 +7510,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep2 === " ")
-            sep2 = "\n";
-          else if (!prevMoreIndented && sep2 === "\n")
-            sep2 = "\n\n";
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          if (sep5 === " ")
+            sep5 = "\n";
+          else if (!prevMoreIndented && sep5 === "\n")
+            sep5 = "\n\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep2 === "\n")
+          if (sep5 === "\n")
             value += "\n";
           else
-            sep2 = "\n";
+            sep5 = "\n";
         } else {
-          value += sep2 + content;
-          sep2 = " ";
+          value += sep5 + content;
+          sep5 = " ";
           prevMoreIndented = false;
         }
       }
@@ -7606,7 +7606,7 @@ var require_resolve_block_scalar = __commonJS({
       }
       return { mode, indent, chomp, comment, length };
     }
-    function splitLines2(source) {
+    function splitLines3(source) {
       const split = source.split(/\n( *)/);
       const first = split[0];
       const m = first.match(/^( *)/);
@@ -7709,25 +7709,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep2 = " ";
+      let sep5 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep2 === "\n")
-            res += sep2;
+          if (sep5 === "\n")
+            res += sep5;
           else
-            sep2 = "\n";
+            sep5 = "\n";
         } else {
-          res += sep2 + match[1];
-          sep2 = " ";
+          res += sep5 + match[1];
+          sep5 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep2 + (match?.[1] ?? "");
+      return res + sep5 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -8537,14 +8537,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep2, value }) {
+    function stringifyItem({ start, key, sep: sep5, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep2)
-        for (const st of sep2)
+      if (sep5)
+        for (const st of sep5)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -9711,18 +9711,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep2;
+          let sep5;
           if (scalar.end) {
-            sep2 = scalar.end;
-            sep2.push(this.sourceToken);
+            sep5 = scalar.end;
+            sep5.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep2 = [this.sourceToken];
+            sep5 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep2 }]
+            items: [{ start, key: scalar, sep: sep5 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -9875,15 +9875,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep2 = it.sep;
-                  sep2.push(this.sourceToken);
+                  const sep5 = it.sep;
+                  sep5.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep2 }]
+                    items: [{ start: start2, key, sep: sep5 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -10077,13 +10077,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep2 = fc.end.splice(1, fc.end.length);
-            sep2.push(this.sourceToken);
+            const sep5 = fc.end.splice(1, fc.end.length);
+            sep5.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep2 }]
+              items: [{ start, key: fc, sep: sep5 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -12836,9 +12836,9 @@ var require_parse2 = __commonJS({
                 const idx = prev.value.lastIndexOf("[");
                 const pre = prev.value.slice(0, idx);
                 const rest2 = prev.value.slice(idx + 2);
-                const posix3 = POSIX_REGEX_SOURCE[rest2];
-                if (posix3) {
-                  prev.value = pre + posix3;
+                const posix7 = POSIX_REGEX_SOURCE[rest2];
+                if (posix7) {
+                  prev.value = pre + posix7;
                   state.backtrack = true;
                   advance();
                   if (!bos.output && tokens.indexOf(prev) === 1) {
@@ -13359,7 +13359,7 @@ var require_picomatch = __commonJS({
         throw new TypeError("Expected pattern to be a non-empty string");
       }
       const opts = options || {};
-      const posix3 = utils.isWindows(options);
+      const posix7 = utils.isWindows(options);
       const regex = isState ? picomatch.compileRe(glob, options) : picomatch.makeRe(glob, options, false, true);
       const state = regex.state;
       delete regex.state;
@@ -13369,8 +13369,8 @@ var require_picomatch = __commonJS({
         isIgnored = picomatch(opts.ignore, ignoreOpts, returnState);
       }
       const matcher = (input, returnObject = false) => {
-        const { isMatch, match, output } = picomatch.test(input, regex, options, { glob, posix: posix3 });
-        const result = { glob, state, regex, posix: posix3, input, output, match, isMatch };
+        const { isMatch, match, output } = picomatch.test(input, regex, options, { glob, posix: posix7 });
+        const result = { glob, state, regex, posix: posix7, input, output, match, isMatch };
         if (typeof opts.onResult === "function") {
           opts.onResult(result);
         }
@@ -13395,7 +13395,7 @@ var require_picomatch = __commonJS({
       }
       return matcher;
     };
-    picomatch.test = (input, regex, options, { glob, posix: posix3 } = {}) => {
+    picomatch.test = (input, regex, options, { glob, posix: posix7 } = {}) => {
       if (typeof input !== "string") {
         throw new TypeError("Expected input to be a string");
       }
@@ -13403,7 +13403,7 @@ var require_picomatch = __commonJS({
         return { isMatch: false, output: "" };
       }
       const opts = options || {};
-      const format = opts.format || (posix3 ? utils.toPosixSlashes : null);
+      const format = opts.format || (posix7 ? utils.toPosixSlashes : null);
       let match = input === glob;
       let output = match && format ? format(input) : input;
       if (match === false) {
@@ -13412,14 +13412,14 @@ var require_picomatch = __commonJS({
       }
       if (match === false || opts.capture === true) {
         if (opts.matchBase === true || opts.basename === true) {
-          match = picomatch.matchBase(input, regex, options, posix3);
+          match = picomatch.matchBase(input, regex, options, posix7);
         } else {
           match = regex.exec(output);
         }
       }
       return { isMatch: Boolean(match), match, output };
     };
-    picomatch.matchBase = (input, glob, options, posix3 = utils.isWindows(options)) => {
+    picomatch.matchBase = (input, glob, options, posix7 = utils.isWindows(options)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
       return regex.test(path.basename(input));
     };
@@ -13608,9 +13608,9 @@ var require_micromatch = __commonJS({
       return [].concat(patterns).every((p) => picomatch(p, options)(str));
     };
     micromatch.capture = (glob, input, options) => {
-      let posix3 = utils.isWindows(options);
+      let posix7 = utils.isWindows(options);
       let regex = picomatch.makeRe(String(glob), { ...options, capture: true });
-      let match = regex.exec(posix3 ? utils.toPosixSlashes(input) : input);
+      let match = regex.exec(posix7 ? utils.toPosixSlashes(input) : input);
       if (match) {
         return match.slice(1).map((v) => v === void 0 ? "" : v);
       }
@@ -13743,8 +13743,8 @@ var require_pattern = __commonJS({
     }
     exports.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename2 = path.basename(pattern);
-      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename2);
+      const basename3 = path.basename(pattern);
+      return endsWithSlashGlobStar(pattern) || isStaticPattern(basename3);
     }
     exports.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
     function expandPatternsWithBraceExpansion(patterns) {
@@ -13789,21 +13789,21 @@ var require_pattern = __commonJS({
     exports.removeDuplicateSlashes = removeDuplicateSlashes;
     function partitionAbsoluteAndRelative(patterns) {
       const absolute = [];
-      const relative2 = [];
+      const relative4 = [];
       for (const pattern of patterns) {
-        if (isAbsolute(pattern)) {
+        if (isAbsolute3(pattern)) {
           absolute.push(pattern);
         } else {
-          relative2.push(pattern);
+          relative4.push(pattern);
         }
       }
-      return [absolute, relative2];
+      return [absolute, relative4];
     }
     exports.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
-    function isAbsolute(pattern) {
+    function isAbsolute3(pattern) {
       return path.isAbsolute(pattern);
     }
-    exports.isAbsolute = isAbsolute;
+    exports.isAbsolute = isAbsolute3;
   }
 });
 
@@ -14101,7 +14101,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path, (statError, stat) => {
+        settings.fs.stat(path, (statError, stat3) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -14111,9 +14111,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat.isSymbolicLink = () => true;
+            stat3.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat);
+          callSuccessCallback(callback, stat3);
         });
       });
     }
@@ -14139,11 +14139,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat = settings.fs.statSync(path);
+        const stat3 = settings.fs.statSync(path);
         if (settings.markSymbolicLink) {
-          stat.isSymbolicLink = () => true;
+          stat3.isSymbolicLink = () => true;
         }
-        return stat;
+        return stat3;
       } catch (error) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -14210,14 +14210,14 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports.Settings = settings_1.default;
-    function stat(path, optionsOrSettingsOrCallback, callback) {
+    function stat3(path, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    exports.stat = stat;
+    exports.stat = stat3;
     function statSync(path, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path, settings);
@@ -14887,41 +14887,41 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve6, reject) {
+        var p = new Promise(function(resolve9, reject) {
           pushCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve6(result);
+            resolve9(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function unshift(value) {
-        var p = new Promise(function(resolve6, reject) {
+        var p = new Promise(function(resolve9, reject) {
           unshiftCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve6(result);
+            resolve9(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function drained() {
-        var p = new Promise(function(resolve6) {
+        var p = new Promise(function(resolve9) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve6();
+              resolve9();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function") previousDrain();
-                resolve6();
+                resolve9();
                 queue.drain = previousDrain;
               };
             }
@@ -15407,9 +15407,9 @@ var require_stream3 = __commonJS({
         });
       }
       _getStat(filepath) {
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve9, reject) => {
           this._stat(filepath, this._fsStatSettings, (error, stats) => {
-            return error === null ? resolve6(stats) : reject(error);
+            return error === null ? resolve9(stats) : reject(error);
           });
         });
       }
@@ -15433,10 +15433,10 @@ var require_async5 = __commonJS({
         this._readerStream = new stream_1.default(this._settings);
       }
       dynamic(root, options) {
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve9, reject) => {
           this._walkAsync(root, options, (error, entries) => {
             if (error === null) {
-              resolve6(entries);
+              resolve9(entries);
             } else {
               reject(error);
             }
@@ -15446,10 +15446,10 @@ var require_async5 = __commonJS({
       async static(patterns, options) {
         const entries = [];
         const stream = this._readerStream.static(patterns, options);
-        return new Promise((resolve6, reject) => {
+        return new Promise((resolve9, reject) => {
           stream.once("error", reject);
           stream.on("data", (entry) => entries.push(entry));
-          stream.once("end", () => resolve6(entries));
+          stream.once("end", () => resolve9(entries));
         });
       }
     };
@@ -16061,19 +16061,19 @@ var require_out4 = __commonJS({
         return utils.path.convertPathToPattern(source);
       }
       FastGlob2.convertPathToPattern = convertPathToPattern;
-      let posix3;
-      (function(posix4) {
+      let posix7;
+      (function(posix8) {
         function escapePath2(source) {
           assertPatternsInput(source);
           return utils.path.escapePosixPath(source);
         }
-        posix4.escapePath = escapePath2;
+        posix8.escapePath = escapePath2;
         function convertPathToPattern2(source) {
           assertPatternsInput(source);
           return utils.path.convertPosixPathToPattern(source);
         }
-        posix4.convertPathToPattern = convertPathToPattern2;
-      })(posix3 = FastGlob2.posix || (FastGlob2.posix = {}));
+        posix8.convertPathToPattern = convertPathToPattern2;
+      })(posix7 = FastGlob2.posix || (FastGlob2.posix = {}));
       let win32;
       (function(win322) {
         function escapePath2(source) {
@@ -16124,9 +16124,9 @@ var {
 } = import_index.default;
 
 // scripts/lib/apply-runner.ts
-import { mkdtemp, rm, writeFile as writeFile2 } from "node:fs/promises";
+import { mkdtemp, rm as rm2, writeFile as writeFile2 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname as dirname2, extname, join as join2, resolve } from "node:path";
+import { basename as basename2, dirname as dirname2, extname, join as join3, resolve } from "node:path";
 
 // scripts/lib/config.ts
 var import_yaml = __toESM(require_dist(), 1);
@@ -20173,10 +20173,40 @@ var coerce = {
 var NEVER = INVALID;
 
 // scripts/lib/config.ts
+var PublishConfigSchema = external_exports.object({
+  remoteFolderToken: external_exports.string().trim().min(1, "remoteFolderToken is required"),
+  remoteFolderUrl: external_exports.string().optional()
+}).strict();
+var PullSourceConfigSchema = external_exports.object({
+  type: external_exports.enum(["doc", "folder", "wiki_node"]),
+  tokenOrUrl: external_exports.string().trim().min(1)
+}).strict();
+var PullConfigSchema = external_exports.object({
+  source: PullSourceConfigSchema,
+  outputDir: external_exports.string().default("."),
+  linkMode: external_exports.enum(["obsidian-wiki"]).default("obsidian-wiki"),
+  frontmatter: external_exports.enum(["minimal"]).default("minimal"),
+  conflictPolicy: external_exports.enum(["stop"]).default("stop"),
+  remoteMissingPolicy: external_exports.enum(["keep-local"]).default("keep-local"),
+  assetPolicy: external_exports.object({
+    mode: external_exports.enum(["per-document-folder"]).default("per-document-folder"),
+    directoryName: external_exports.string().trim().min(1).default("assets")
+  }).strict().default({}),
+  namingRules: external_exports.array(external_exports.object({
+    match: external_exports.object({
+      title: external_exports.string().optional(),
+      token: external_exports.string().optional(),
+      wikiNodeToken: external_exports.string().optional()
+    }).strict(),
+    localPath: external_exports.string().trim().min(1)
+  }).strict()).default([])
+}).strict();
 var ConfigSchema = external_exports.object({
   workspaceRoot: external_exports.string().default("."),
-  remoteFolderToken: external_exports.string().trim().min(1, "remoteFolderToken is required"),
+  remoteFolderToken: external_exports.string().trim().min(1, "remoteFolderToken is required").optional(),
   remoteFolderUrl: external_exports.string().optional(),
+  publish: PublishConfigSchema.optional(),
+  pull: PullConfigSchema.optional(),
   include: external_exports.array(external_exports.string()).default(["**/*.md"]),
   exclude: external_exports.array(external_exports.string()).default([
     "node_modules/**",
@@ -20201,10 +20231,28 @@ function parseConfig(source) {
   const raw = import_yaml.default.parse(source) ?? {};
   return ConfigSchema.parse(raw);
 }
+function requirePublishConfig(config) {
+  const remoteFolderToken = config.publish?.remoteFolderToken ?? config.remoteFolderToken;
+  const remoteFolderUrl = config.publish?.remoteFolderUrl ?? config.remoteFolderUrl;
+  if (!remoteFolderToken?.trim()) {
+    throw new Error("Missing publish remote folder token. Add remoteFolderToken or publish.remoteFolderToken.");
+  }
+  return {
+    remoteFolderToken: remoteFolderToken.trim(),
+    ...remoteFolderUrl ? { remoteFolderUrl } : {}
+  };
+}
+function requirePullConfig(config) {
+  if (!config.pull) {
+    throw new Error("Missing pull config. Add pull.source.type and pull.source.tokenOrUrl.");
+  }
+  return config.pull;
+}
 
 // scripts/lib/fs-utils.ts
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 async function readUtf8(path) {
   return readFile(path, "utf8");
 }
@@ -20212,9 +20260,17 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 async function writeJson(path, value) {
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, 2)}
+  const dir = dirname(path);
+  await mkdir(dir, { recursive: true });
+  const tempPath = join(dir, `.${basename(path)}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`);
+  try {
+    await writeFile(tempPath, `${JSON.stringify(value, null, 2)}
 `, "utf8");
+    await rename(tempPath, path);
+  } catch (error) {
+    await rm(tempPath, { force: true }).catch(() => void 0);
+    throw error;
+  }
 }
 async function writeUtf8(path, value) {
   await mkdir(dirname(path), { recursive: true });
@@ -20224,14 +20280,14 @@ async function writeUtf8(path, value) {
 // scripts/lib/lark-cli.ts
 import { spawn } from "node:child_process";
 function runCommand(command, args, cwd = process.cwd()) {
-  return new Promise((resolve6) => {
+  return new Promise((resolve9) => {
     let settled = false;
     let stdout = "";
     let stderr = "";
     const finish = (result) => {
       if (!settled) {
         settled = true;
-        resolve6(result);
+        resolve9(result);
       }
     };
     const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
@@ -20458,7 +20514,7 @@ Diff.prototype = {
   tokenize: function tokenize(value) {
     return value.split("");
   },
-  join: function join(chars) {
+  join: function join2(chars) {
     return chars.join("");
   }
 };
@@ -21054,6 +21110,43 @@ var GitYourLarkStateSchema = external_exports.object({
   attachments: external_exports.record(AttachmentStateSchema),
   lastAppliedProposalId: external_exports.string().optional()
 }).strict();
+var PullSourceStateSchema = external_exports.object({
+  type: external_exports.enum(["doc", "folder", "wiki_node"]),
+  tokenOrUrl: external_exports.string(),
+  sourceUrl: external_exports.string().optional(),
+  remoteTitle: external_exports.string().optional(),
+  remoteRevision: external_exports.string().optional(),
+  remoteModifiedTime: external_exports.string().optional(),
+  lastPulledAt: external_exports.string().optional()
+}).strict();
+var PullDocumentStateSchema = external_exports.object({
+  docToken: external_exports.string(),
+  wikiNodeToken: external_exports.string().optional(),
+  sourceUrl: external_exports.string().optional(),
+  remoteTitle: external_exports.string(),
+  remotePath: external_exports.string(),
+  localPath: external_exports.string(),
+  remoteRevision: external_exports.string().optional(),
+  remoteModifiedTime: external_exports.string().optional(),
+  localHash: external_exports.string(),
+  assetPaths: external_exports.array(external_exports.string())
+}).strict();
+var PullAssetStateSchema = external_exports.object({
+  sourceToken: external_exports.string().optional(),
+  sourceUrl: external_exports.string().optional(),
+  localPath: external_exports.string(),
+  ownerDocToken: external_exports.string(),
+  hash: external_exports.string()
+}).strict();
+var GitYourLarkRootStateSchema = external_exports.object({
+  version: external_exports.literal(2),
+  publish: GitYourLarkStateSchema,
+  pull: external_exports.object({
+    sources: external_exports.record(PullSourceStateSchema),
+    documents: external_exports.record(PullDocumentStateSchema),
+    assets: external_exports.record(PullAssetStateSchema)
+  }).strict()
+}).strict();
 function emptyState(remoteFolderToken, remoteFolderUrl) {
   return {
     version: 1,
@@ -21063,22 +21156,90 @@ function emptyState(remoteFolderToken, remoteFolderUrl) {
     attachments: {}
   };
 }
-async function loadState(path, remoteFolderToken) {
+function emptyPullState() {
+  return {
+    sources: {},
+    documents: {},
+    assets: {}
+  };
+}
+function emptyRootState(remoteFolderToken = "", remoteFolderUrl) {
+  return {
+    version: 2,
+    publish: emptyState(remoteFolderToken, remoteFolderUrl),
+    pull: emptyPullState()
+  };
+}
+function migratePublishState(publish) {
+  return {
+    version: 2,
+    publish,
+    pull: emptyPullState()
+  };
+}
+function isEmptyPublishState(state) {
+  return !state.remoteFolderToken.trim() && !state.remoteFolderUrl && Object.keys(state.documents).length === 0 && Object.keys(state.attachments).length === 0 && !state.lastAppliedProposalId;
+}
+async function loadRootState(path, remoteFolderToken) {
   try {
-    const parsed = GitYourLarkStateSchema.safeParse(await readJson(path));
-    if (!parsed.success) {
-      throw new Error(`Invalid git-your-lark state: ${parsed.error.message}`);
+    const value = await readJson(path);
+    const root = GitYourLarkRootStateSchema.safeParse(value);
+    if (root.success) {
+      return root.data;
     }
-    return parsed.data;
+    const publish = GitYourLarkStateSchema.safeParse(value);
+    if (publish.success) {
+      return migratePublishState(publish.data);
+    }
+    throw new Error(`Invalid git-your-lark state: ${root.error.message}`);
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return emptyState(remoteFolderToken);
+      return emptyRootState(remoteFolderToken);
     }
     throw error;
   }
 }
-async function saveState(path, state) {
+async function saveRootState(path, state) {
   await writeJson(path, state);
+}
+async function loadPublishState(path, remoteFolderToken) {
+  const root = await loadRootState(path, remoteFolderToken);
+  const trimmedRemoteFolderToken = remoteFolderToken.trim();
+  if (trimmedRemoteFolderToken && isEmptyPublishState(root.publish)) {
+    return emptyState(trimmedRemoteFolderToken);
+  }
+  return root.publish;
+}
+async function savePublishState(path, state) {
+  try {
+    const value = await readJson(path);
+    const root = GitYourLarkRootStateSchema.safeParse(value);
+    if (root.success) {
+      await saveRootState(path, {
+        ...root.data,
+        publish: state
+      });
+      return;
+    }
+    const publish = GitYourLarkStateSchema.safeParse(value);
+    if (publish.success) {
+      await writeJson(path, state);
+      return;
+    }
+    throw new Error(`Invalid git-your-lark state: ${root.error.message}`);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      await writeJson(path, state);
+      return;
+    }
+    throw error;
+  }
+}
+async function loadState(path, remoteFolderToken) {
+  return loadPublishState(path, remoteFolderToken);
+}
+async function saveState(path, state) {
+  await savePublishState(path, state);
 }
 
 // scripts/lib/apply-runner.ts
@@ -21151,8 +21312,9 @@ async function applyProposal(options) {
   }
   const configDir = dirname2(configPath);
   const config = parseConfig(await readUtf8(configPath));
-  if (proposal.baseRemoteFolderToken !== config.remoteFolderToken) {
-    const problem = `Proposal base remote folder token ${proposal.baseRemoteFolderToken} does not match config remote folder token ${config.remoteFolderToken}`;
+  const publishConfig = requirePublishConfig(config);
+  if (proposal.baseRemoteFolderToken !== publishConfig.remoteFolderToken) {
+    const problem = `Proposal base remote folder token ${proposal.baseRemoteFolderToken} does not match config remote folder token ${publishConfig.remoteFolderToken}`;
     await record("folder-token-mismatch", { problems: [problem] }, "failed");
     return { ok: false, status: "failed", problems: [problem], journalPath };
   }
@@ -21165,13 +21327,13 @@ async function applyProposal(options) {
     }
     hasRemoteWrite = true;
   };
-  const remote = await scanRemoteFolder2(config.remoteFolderToken);
+  const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
   const conflicts = analyzeRemoteConflicts(proposal, remote);
   if (conflicts.length > 0) {
     await record("conflict", { problems: conflicts }, "conflict");
     return { ok: false, status: "conflict", problems: conflicts, journalPath };
   }
-  let state = await loadState2(statePath, config.remoteFolderToken);
+  let state = await loadState2(statePath, publishConfig.remoteFolderToken);
   let stateDirty = false;
   const remoteByToken = new Map(remote.entries.map((entry) => [entry.token, entry]));
   const persistState = async () => {
@@ -21185,6 +21347,7 @@ async function applyProposal(options) {
           const created = await createPlaceholderDocument({
             action,
             config,
+            remoteFolderToken: publishConfig.remoteFolderToken,
             workspaceRoot,
             beforeRemoteWrite,
             run: runner
@@ -21280,16 +21443,16 @@ async function applyProposal(options) {
 }
 function applyJournalPath(proposalPath) {
   const extension = extname(proposalPath);
-  const stem2 = basename(proposalPath, extension);
-  return join2(dirname2(proposalPath), `${stem2}.apply-journal.json`);
+  const stem2 = basename2(proposalPath, extension);
+  return join3(dirname2(proposalPath), `${stem2}.apply-journal.json`);
 }
 function defaultSleep(ms) {
-  return new Promise((resolve6) => setTimeout(resolve6, ms));
+  return new Promise((resolve9) => setTimeout(resolve9, ms));
 }
 async function createPlaceholderDocument(input) {
-  const tempDir = await mkdtemp(join2(tmpdir(), "gyl-placeholder-"));
+  const tempDir = await mkdtemp(join3(tmpdir(), "gyl-placeholder-"));
   try {
-    const placeholderPath = join2(tempDir, "placeholder.md");
+    const placeholderPath = join3(tempDir, "placeholder.md");
     await writeFile2(placeholderPath, `# ${input.action.title}
 `, "utf8");
     await input.beforeRemoteWrite();
@@ -21305,7 +21468,7 @@ async function createPlaceholderDocument(input) {
         "--type",
         "docx",
         "--folder-token",
-        input.config.remoteFolderToken,
+        input.remoteFolderToken,
         "--name",
         input.action.title
       ],
@@ -21314,7 +21477,7 @@ async function createPlaceholderDocument(input) {
     assertCommandSucceeded("create placeholder document", result);
     return parseDocumentResult(result.stdout);
   } finally {
-    await rm(tempDir, { recursive: true, force: true }).catch(() => void 0);
+    await rm2(tempDir, { recursive: true, force: true }).catch(() => void 0);
   }
 }
 async function writeDocument(input) {
@@ -21612,7 +21775,11 @@ var REQUIRED_LARK_COMMANDS = [
   "drive +import",
   "docs +fetch",
   "docs +update",
-  "docs +media-insert"
+  "docs +media-insert",
+  "drive +inspect",
+  "wiki +node-get",
+  "wiki +node-list",
+  "docs +media-download"
 ];
 function analyzeDoctor(input) {
   const problems = [];
@@ -21658,10 +21825,19 @@ function yamlString(value) {
   return JSON.stringify(value);
 }
 function renderInitConfig(input) {
+  const hasPublishConfig = Boolean(input.remoteFolderToken?.trim());
+  const hasPullConfig = Boolean(input.pullSourceType && input.pullSourceTokenOrUrl?.trim());
   const lines = [
     `workspaceRoot: ${yamlString(input.workspaceRoot)}`,
-    `remoteFolderToken: ${yamlString(input.remoteFolderToken)}`,
-    ...input.remoteFolderUrl ? [`remoteFolderUrl: ${yamlString(input.remoteFolderUrl)}`] : [],
+    ...hasPublishConfig ? [`remoteFolderToken: ${yamlString(input.remoteFolderToken)}`] : [],
+    ...hasPublishConfig && input.remoteFolderUrl ? [`remoteFolderUrl: ${yamlString(input.remoteFolderUrl)}`] : [],
+    ...hasPullConfig ? [
+      "pull:",
+      "  source:",
+      `    type: ${yamlString(input.pullSourceType)}`,
+      `    tokenOrUrl: ${yamlString(input.pullSourceTokenOrUrl)}`,
+      `  outputDir: ${yamlString(input.pullOutputDir ?? ".")}`
+    ] : [],
     "include:",
     '  - "**/*.md"',
     "exclude:",
@@ -21681,8 +21857,17 @@ function renderInitConfig(input) {
   ];
   ConfigSchema.parse({
     workspaceRoot: input.workspaceRoot,
-    remoteFolderToken: input.remoteFolderToken,
-    ...input.remoteFolderUrl ? { remoteFolderUrl: input.remoteFolderUrl } : {}
+    ...hasPublishConfig ? { remoteFolderToken: input.remoteFolderToken } : {},
+    ...hasPublishConfig && input.remoteFolderUrl ? { remoteFolderUrl: input.remoteFolderUrl } : {},
+    ...hasPullConfig ? {
+      pull: {
+        source: {
+          type: input.pullSourceType,
+          tokenOrUrl: input.pullSourceTokenOrUrl
+        },
+        outputDir: input.pullOutputDir ?? "."
+      }
+    } : {}
   });
   return lines.join("\n");
 }
@@ -21750,31 +21935,46 @@ async function initCommand(options) {
   const outputPath = options.outputPath ?? "git-your-lark.yml";
   const workspaceRoot = options.workspaceRoot ?? ".";
   const force = options.force ?? false;
+  const hasPullIntent = Boolean(options.pullSourceType || options.pullSourceTokenOrUrl || options.pullOutputDir);
+  const hasPublishIntent = Boolean(
+    options.remoteFolderToken?.trim() || options.remoteFolderUrl?.trim() || options.createRemoteFolder || options.folderName?.trim() || options.parentFolderToken?.trim()
+  );
   if (existsSync(outputPath) && !force) {
     console.error(`${outputPath} already exists. Pass --force to overwrite it.`);
     return 1;
   }
-  const remote = await resolveRemoteFolder({
+  if (hasPullIntent && !options.pullSourceType) {
+    console.error("Missing --pull-source-type for pull init.");
+    return 1;
+  }
+  if (hasPullIntent && !options.pullSourceTokenOrUrl?.trim()) {
+    console.error("Missing --pull-source for pull init.");
+    return 1;
+  }
+  const remote = hasPublishIntent || !hasPullIntent ? await resolveRemoteFolder({
     ...options,
     createRemoteFolder: options.createRemoteFolder ?? false
-  });
-  if (!remote) return 1;
+  }) : null;
+  if ((hasPublishIntent || !hasPullIntent) && !remote) return 1;
   await writeUtf8(outputPath, renderInitConfig({
     workspaceRoot,
-    remoteFolderToken: remote.remoteFolderToken,
-    remoteFolderUrl: remote.remoteFolderUrl
+    remoteFolderToken: remote?.remoteFolderToken,
+    remoteFolderUrl: remote?.remoteFolderUrl,
+    pullSourceType: options.pullSourceType,
+    pullSourceTokenOrUrl: options.pullSourceTokenOrUrl?.trim(),
+    pullOutputDir: hasPullIntent ? options.pullOutputDir ?? "." : void 0
   }));
   console.log(`Created ${outputPath}`);
   return 0;
 }
 
 // scripts/commands/proposal.ts
-import { dirname as dirname4, join as join4, resolve as resolve3 } from "node:path";
+import { dirname as dirname4, join as join5, resolve as resolve3 } from "node:path";
 
 // scripts/lib/local-scan.ts
 var import_fast_glob = __toESM(require_out4(), 1);
 import { readFile as readFile2 } from "node:fs/promises";
-import { dirname as dirname3, join as join3, relative, resolve as resolve2, sep } from "node:path";
+import { dirname as dirname3, join as join4, relative, resolve as resolve2, sep } from "node:path";
 
 // scripts/lib/hash.ts
 import { createHash } from "node:crypto";
@@ -21955,7 +22155,7 @@ async function scanLocalWorkspace(input) {
   const attachments = /* @__PURE__ */ new Map();
   for (const documentPath of documentPaths) {
     const normalizedDocumentPath = normalizePath2(documentPath);
-    const absoluteDocumentPath = join3(workspaceRoot, normalizedDocumentPath);
+    const absoluteDocumentPath = join4(workspaceRoot, normalizedDocumentPath);
     const content = await readFile2(absoluteDocumentPath, "utf8");
     const references = parseMarkdownReferences(content);
     const documentAttachments = [];
@@ -22205,6 +22405,7 @@ async function proposalCommand(configPath, dependencies = {}) {
   const resolvedConfigPath = resolve3(configPath);
   const configDir = dirname4(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
+  const publishConfig = requirePublishConfig(config);
   const workspaceRoot = resolve3(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
@@ -22212,8 +22413,8 @@ async function proposalCommand(configPath, dependencies = {}) {
     exclude: config.exclude,
     titleMode: config.titleMode
   });
-  const remote = await scanRemoteFolder2(config.remoteFolderToken);
-  const state = await loadState2(resolve3(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
+  const state = await loadState2(resolve3(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
   const proposal = buildProposal({
     local,
     remote,
@@ -22222,8 +22423,8 @@ async function proposalCommand(configPath, dependencies = {}) {
     now: now()
   });
   const proposalDir = resolve3(workspaceRoot, config.proposalDir);
-  const jsonPath = join4(proposalDir, `${proposal.id}.json`);
-  const markdownPath = join4(proposalDir, `${proposal.id}.md`);
+  const jsonPath = join5(proposalDir, `${proposal.id}.json`);
+  const markdownPath = join5(proposalDir, `${proposal.id}.md`);
   await writeJson(jsonPath, proposal);
   await writeUtf8(markdownPath, renderProposalMarkdown(proposal));
   console.log(`Wrote proposal JSON: ${jsonPath}`);
@@ -22231,25 +22432,2335 @@ async function proposalCommand(configPath, dependencies = {}) {
   return proposal.blockers.length === 0 ? 0 : 2;
 }
 
+// scripts/commands/pull.ts
+var import_fast_glob2 = __toESM(require_out4(), 1);
+import { readFile as readFile5, realpath as realpath3, stat as stat2 } from "node:fs/promises";
+import { dirname as dirname7, join as join6, posix as posix6, resolve as resolve6, sep as sep4 } from "node:path";
+
+// scripts/lib/pull-apply.ts
+import { copyFile, mkdir as mkdir2, readFile as readFile3, realpath, rm as rm3, writeFile as writeFile3 } from "node:fs/promises";
+import { dirname as dirname5, isAbsolute, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
+import { posix as posix4 } from "node:path";
+
+// scripts/lib/pull-fetch.ts
+async function fetchPullDocument(docToken, run = runCommand) {
+  const markdown = await fetchDocumentContent(docToken, "markdown", run);
+  const xml = await fetchDocumentContent(docToken, "xml", run);
+  return {
+    docToken,
+    title: parseTitleFromFetchedContent(markdown.content, xml.content, docToken),
+    markdown: markdown.content,
+    xml: xml.content,
+    ...xml.revisionId || markdown.revisionId ? { revisionId: xml.revisionId ?? markdown.revisionId } : {},
+    media: parsePullMediaFromXml(xml.content)
+  };
+}
+function parsePullMediaFromXml(xml) {
+  const media = [];
+  for (const tag of xml.matchAll(/<(?:img|image)\b[^>]*>/gi)) {
+    const attributes = parseAttributes(tag[0]);
+    const token = firstAttribute(attributes, mediaTokenAttributeNames);
+    const href = firstAttribute(attributes, mediaUrlAttributeNames);
+    media.push({
+      kind: "image",
+      ...token ? { token } : {},
+      ...href ? { href } : {},
+      name: attributes.name || token || href || "image",
+      alt: attributes.alt || ""
+    });
+  }
+  for (const tag of xml.matchAll(/<source\b[^>]*>/gi)) {
+    const attributes = parseAttributes(tag[0]);
+    const token = firstAttribute(attributes, mediaTokenAttributeNames);
+    const href = firstAttribute(attributes, mediaUrlAttributeNames);
+    media.push({
+      kind: "file",
+      ...token ? { token } : {},
+      ...href ? { href } : {},
+      name: attributes.name || token || href || "attachment",
+      alt: attributes.alt || ""
+    });
+  }
+  return media;
+}
+var mediaTokenAttributeNames = ["token", "src", "image_token", "file_token", "media_token"];
+var mediaUrlAttributeNames = ["url", "href", "image_url", "file_url", "media_url"];
+function parseTitleFromFetchedContent(markdown, xml, fallback) {
+  const xmlTitle = xml.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  if (xmlTitle?.trim()) {
+    return decodeXmlText(stripTags(xmlTitle).trim());
+  }
+  const markdownHeading = markdown.match(/^\s*#\s+(.+?)\s*#*\s*$/m)?.[1];
+  if (markdownHeading?.trim()) {
+    return markdownHeading.trim();
+  }
+  return fallback;
+}
+async function fetchDocumentContent(docToken, docFormat, run) {
+  const args = [
+    "docs",
+    "+fetch",
+    "--api-version",
+    "v2",
+    "--doc",
+    docToken,
+    "--doc-format",
+    docFormat,
+    ...docFormat === "xml" ? ["--detail", "full"] : [],
+    "--as",
+    "user",
+    "--format",
+    "json"
+  ];
+  const result = await run("lark-cli", args);
+  if (result.code !== 0) {
+    throw new Error(`lark-cli docs fetch failed for ${docToken} (${docFormat})
+stdout:
+${result.stdout}
+stderr:
+${result.stderr}`);
+  }
+  return toFetchedContent(extractJson(result.stdout));
+}
+function toFetchedContent(value) {
+  const root = value;
+  const data = root.data ?? root;
+  const document = data.document ?? data;
+  return {
+    content: stringValue(document.content),
+    ...document.revision_id || document.revisionId ? { revisionId: stringValue(document.revision_id ?? document.revisionId) } : {}
+  };
+}
+function parseAttributes(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+    attributes[match[1]] = decodeXmlText(match[2] ?? match[3] ?? "");
+  }
+  return attributes;
+}
+function firstAttribute(attributes, names) {
+  for (const name of names) {
+    if (attributes[name]) {
+      return attributes[name];
+    }
+  }
+  return void 0;
+}
+function stripTags(value) {
+  return value.replace(/<[^>]+>/g, "");
+}
+function decodeXmlText(value) {
+  return value.replaceAll("&quot;", '"').replaceAll("&apos;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&").replace(/&#(\d+);/g, (_match, codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 10))).replace(/&#x([0-9a-f]+);/gi, (_match, codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 16)));
+}
+function stringValue(value) {
+  return value === void 0 || value === null ? "" : String(value);
+}
+
+// scripts/lib/pull-proposal.ts
+import { posix as posix3 } from "node:path";
+
+// scripts/lib/pull-render.ts
+function renderPullMarkdown(input) {
+  const body = ensureTitleHeading(
+    transformMarkdownOutsideCode(
+      convertTitleTag(input.markdown),
+      (text) => convertLarkReferences(rewriteMediaReferences(text, input.mediaPlans), input.index)
+    ).trimEnd(),
+    input.remote.title
+  );
+  return {
+    markdown: `${renderFrontmatter(input.remote, input.pulledAt)}
+
+${body}
+`
+  };
+}
+function renderPullIndexMarkdown(input) {
+  const childLinks = input.remote.childDocTokens.map((token) => input.index.get(token)).filter((target) => Boolean(target)).map((target) => `- ${toWikiLink(target)}`);
+  const body = [`# ${input.remote.title}`, "", ...childLinks].join("\n").trimEnd();
+  return `${renderFrontmatter(input.remote, input.pulledAt)}
+
+${body}
+`;
+}
+function cleanMarkdownFilename(title) {
+  const cleaned = title.replace(/[\/\\:*?"<>|]/g, "_").trim().replace(/[. ]+$/g, "");
+  return cleaned || "untitled";
+}
+function renderFrontmatter(remote, pulledAt) {
+  return [
+    "---",
+    "gyl:",
+    "  source: lark",
+    `  token: ${yamlValue(remote.docToken)}`,
+    ...remote.wikiNodeToken ? [`  wiki_node_token: ${yamlValue(remote.wikiNodeToken)}`] : [],
+    ...remote.sourceUrl ? [`  url: ${yamlValue(remote.sourceUrl)}`] : [],
+    `  title: ${yamlValue(remote.title)}`,
+    `  pulled_at: ${yamlValue(toIsoString(pulledAt))}`,
+    "---"
+  ].join("\n");
+}
+function convertTitleTag(markdown) {
+  return markdown.replace(/^\s*<title\b[^>]*>([\s\S]*?)<\/title>\s*/i, (_match, title) => {
+    return `# ${decodeXmlText2(stripTags2(title).trim())}
+
+`;
+  });
+}
+function rewriteMediaReferences(source, mediaPlans) {
+  let result = replaceSourceTags(source, mediaPlans);
+  result = replaceMarkdownImages(result, mediaPlans);
+  return result;
+}
+function replaceSourceTags(source, mediaPlans) {
+  return source.replace(/<figure>\s*(<source\b[^>]*>)\s*<\/figure>|<source\b[^>]*>/gi, (match, nestedSource) => {
+    const sourceTag = nestedSource || match;
+    const attributes = parseAttributes2(sourceTag);
+    const plan = findMediaPlan(mediaPlans, {
+      kind: "file",
+      token: firstAttribute2(attributes, mediaTokenAttributeNames2),
+      href: firstAttribute2(attributes, mediaUrlAttributeNames2),
+      name: attributes.name
+    });
+    if (plan) {
+      return `[\u9644\u4EF6](${plan.localPath})`;
+    }
+    return `[\u9644\u4EF6\u672A\u4E0B\u8F7D: ${attributes.name || "attachment"}]`;
+  });
+}
+function replaceMarkdownImages(source, mediaPlans) {
+  let result = "";
+  for (let index = 0; index < source.length; index += 1) {
+    const link = parseMarkdownLinkAt2(source, index);
+    if (!link) {
+      result += source[index];
+      continue;
+    }
+    if (!link.image) {
+      result += link.raw;
+      index = link.end;
+      continue;
+    }
+    const href = stripMarkdownDestinationTitle(link.destination);
+    const plan = findMediaPlan(mediaPlans, {
+      kind: "image",
+      token: tokenFromUrl(href),
+      href,
+      name: void 0
+    });
+    result += plan ? `![${link.label}](${plan.localPath})` : link.raw;
+    index = link.end;
+  }
+  return result;
+}
+function convertLarkReferences(source, targets) {
+  let result = replaceCiteTags(source, targets);
+  result = replaceLarkMarkdownLinks(result, targets);
+  return result;
+}
+function replaceCiteTags(source, targets) {
+  return source.replace(/<cite\b[^>]*(?:\/>|\s*>\s*<\/cite>)/gi, (match) => {
+    const attributes = parseAttributes2(match);
+    const docId = attributes["doc-id"] || attributes.docId;
+    const target = attributes.type === "doc" && docId ? targets.get(docId) : void 0;
+    return target ? toWikiLink(target) : match;
+  });
+}
+function replaceLarkMarkdownLinks(source, targets) {
+  let result = "";
+  let plainText = "";
+  for (let index = 0; index < source.length; index += 1) {
+    const link = parseMarkdownLinkAt2(source, index);
+    if (!link) {
+      plainText += source[index];
+      continue;
+    }
+    result += replaceBareLarkUrls(plainText, targets);
+    plainText = "";
+    if (link.image) {
+      result += link.raw;
+      index = link.end;
+      continue;
+    }
+    const token = larkTokenFromMarkdownDestination(link.destination);
+    const target = token ? targets.get(token) : void 0;
+    result += target ? toWikiLink(target) : link.raw;
+    index = link.end;
+  }
+  result += replaceBareLarkUrls(plainText, targets);
+  return result;
+}
+function replaceBareLarkUrls(source, targets) {
+  return source.replace(/https?:\/\/[^\s<>()\[\]]+/g, (rawUrl) => {
+    const { url, suffix } = splitTrailingUrlPunctuation(rawUrl);
+    const token = isLarkDocumentUrl(url) ? tokenFromUrl(url) : void 0;
+    const target = token ? targets.get(token) : void 0;
+    return target ? `${toWikiLink(target)}${suffix}` : rawUrl;
+  });
+}
+function splitTrailingUrlPunctuation(rawUrl) {
+  const url = rawUrl.replace(/[.,;:!?]+$/g, "");
+  return { url, suffix: rawUrl.slice(url.length) };
+}
+function transformMarkdownOutsideCode(markdown, transformText) {
+  let fence;
+  let result = "";
+  for (const line of splitLines2(markdown)) {
+    if (fence) {
+      result += line;
+      if (isClosingFence3(line, fence)) {
+        fence = void 0;
+      }
+      continue;
+    }
+    const openingFence = line.match(/^[ \t]{0,3}(`{3,}|~{3,})/);
+    if (openingFence) {
+      const markerRun = openingFence[1];
+      fence = { marker: markerRun[0], length: markerRun.length };
+      result += line;
+      continue;
+    }
+    if (/^(?: {4}|\t)/.test(line)) {
+      result += line;
+      continue;
+    }
+    result += renderInlineCodeAware2(line, transformText);
+  }
+  return result;
+}
+function renderInlineCodeAware2(source, renderText) {
+  let result = "";
+  let index = 0;
+  while (index < source.length) {
+    const codeStart = source.indexOf("`", index);
+    if (codeStart === -1) {
+      result += renderText(source.slice(index));
+      break;
+    }
+    result += renderText(source.slice(index, codeStart));
+    const markerEnd = findBacktickRunEnd2(source, codeStart);
+    const marker = source.slice(codeStart, markerEnd);
+    const codeEnd = source.indexOf(marker, markerEnd);
+    if (codeEnd === -1) {
+      result += renderText(source.slice(codeStart));
+      break;
+    }
+    result += source.slice(codeStart, codeEnd + marker.length);
+    index = codeEnd + marker.length;
+  }
+  return result;
+}
+function ensureTitleHeading(markdown, title) {
+  const firstLine = markdown.split(/\r?\n/).find((line) => line.trim() !== "");
+  if (firstLine?.match(/^#\s+\S/)) {
+    return markdown;
+  }
+  return [`# ${title}`, "", markdown].join("\n").trimEnd();
+}
+function findMediaPlan(plans, source) {
+  return plans.find((plan) => plan.kind === source.kind && Boolean(source.token) && plan.sourceToken === source.token) ?? plans.find((plan) => plan.kind === source.kind && Boolean(source.href) && plan.sourceHref === source.href) ?? plans.find((plan) => plan.kind === source.kind && Boolean(source.name) && plan.name === source.name);
+}
+function parseMarkdownLinkAt2(source, index) {
+  const image = source[index] === "!" && source[index + 1] === "[";
+  const link = source[index] === "[";
+  if (!image && !link) {
+    return void 0;
+  }
+  const labelStart = image ? index + 1 : index;
+  const labelEnd = findClosingBracket2(source, labelStart + 1);
+  if (labelEnd === -1 || source[labelEnd + 1] !== "(") {
+    return void 0;
+  }
+  const destinationStart = labelEnd + 2;
+  const destinationEnd = findDestinationEnd3(source, destinationStart);
+  if (destinationEnd === -1) {
+    return void 0;
+  }
+  return {
+    image,
+    label: source.slice(labelStart + 1, labelEnd),
+    destination: source.slice(destinationStart, destinationEnd),
+    raw: source.slice(index, destinationEnd + 1),
+    end: destinationEnd
+  };
+}
+function larkTokenFromMarkdownDestination(destination) {
+  const href = stripMarkdownDestinationTitle(destination);
+  if (!/^https?:\/\//i.test(href) || !isLarkDocumentUrl(href)) {
+    return void 0;
+  }
+  return tokenFromUrl(href);
+}
+function isLarkDocumentUrl(value) {
+  try {
+    const { hostname } = new URL(value);
+    return hostname.endsWith(".feishu.cn") || hostname.endsWith(".larksuite.com");
+  } catch {
+    return false;
+  }
+}
+function tokenFromUrl(value) {
+  try {
+    const url = new URL(value);
+    const tokenQuery = url.searchParams.get("token");
+    if (tokenQuery) {
+      return tokenQuery;
+    }
+    return url.pathname.split("/").filter(Boolean).at(-1);
+  } catch {
+    return void 0;
+  }
+}
+function stripMarkdownDestinationTitle(destination) {
+  const trimmed = destination.trim();
+  const withoutAngle = trimmed.startsWith("<") && trimmed.includes(">") ? trimmed.slice(1, trimmed.indexOf(">")) : trimmed;
+  const quotedTitle = withoutAngle.match(/^(.+?)\s+(?:"[^"]*"|'[^']*')\s*$/);
+  if (quotedTitle) {
+    return quotedTitle[1];
+  }
+  const parenthesizedTitle = withoutAngle.match(/^(.+?)\s+\([^()]*\)\s*$/);
+  if (parenthesizedTitle) {
+    return parenthesizedTitle[1];
+  }
+  return withoutAngle;
+}
+function parseAttributes2(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+    attributes[match[1]] = decodeXmlText2(match[2] ?? match[3] ?? "");
+  }
+  return attributes;
+}
+var mediaTokenAttributeNames2 = ["token", "src", "image_token", "file_token", "media_token"];
+var mediaUrlAttributeNames2 = ["url", "href", "image_url", "file_url", "media_url"];
+function firstAttribute2(attributes, names) {
+  for (const name of names) {
+    if (attributes[name]) {
+      return attributes[name];
+    }
+  }
+  return void 0;
+}
+function splitLines2(markdown) {
+  const lines = markdown.match(/[^\n]*(?:\n|$)/g) ?? [];
+  if (lines.at(-1) === "") {
+    lines.pop();
+  }
+  return lines;
+}
+function isClosingFence3(line, fence) {
+  const marker = fence.marker === "`" ? "`" : "~";
+  return new RegExp(`^[ \\t]{0,3}${marker}{${fence.length},}[ \\t]*(?:\\n)?$`).test(line);
+}
+function findClosingBracket2(source, start) {
+  for (let index = start; index < source.length; index += 1) {
+    if (source[index] === "\n") {
+      return -1;
+    }
+    if (source[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (source[index] === "]") {
+      return index;
+    }
+  }
+  return -1;
+}
+function findDestinationEnd3(source, start) {
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "\n") {
+      return -1;
+    }
+    if (char === "\\") {
+      index += 1;
+      continue;
+    }
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")") {
+      if (depth === 0) {
+        return index;
+      }
+      depth -= 1;
+    }
+  }
+  return -1;
+}
+function findBacktickRunEnd2(source, start) {
+  let index = start;
+  while (source[index] === "`") {
+    index += 1;
+  }
+  return index;
+}
+function toWikiLink(target) {
+  return `[[${target.stem}]]`;
+}
+function toIsoString(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function yamlValue(value) {
+  return JSON.stringify(value);
+}
+function stripTags2(value) {
+  return value.replace(/<[^>]+>/g, "");
+}
+function decodeXmlText2(value) {
+  return value.replaceAll("&quot;", '"').replaceAll("&apos;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&").replace(/&#(\d+);/g, (_match, codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 10))).replace(/&#x([0-9a-f]+);/gi, (_match, codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 16)));
+}
+
+// scripts/lib/pull-proposal.ts
+function buildPullProposal(input) {
+  const createdAt = toIsoString2(input.now);
+  const warnings = input.scan.warnings.map(renderScanWarning);
+  const blockers = [];
+  const fetchedDocuments = toFetchedDocumentMap(input.fetchedDocuments);
+  const files = planPullPaths({
+    scan: input.scan,
+    outputDir: input.pull.outputDir,
+    namingRules: input.pull.namingRules ?? []
+  });
+  const filesByDocToken = new Map(files.map((file) => [file.docToken, file]));
+  const existingLocalFiles = toExistingLocalFiles(input.existingLocalFiles);
+  const linkIndex = buildPullLinkIndex(files);
+  const assets = [];
+  const assetDirectoryName = normalizeRelativePath(input.pull.assetPolicy?.directoryName ?? "assets");
+  for (const duplicatePath of findDuplicateLocalPaths(files)) {
+    blockers.push(`Multiple remote documents map to the same local path: ${duplicatePath}`);
+  }
+  for (const file of files) {
+    const currentLocalHash = existingLocalFiles.get(file.localPath);
+    const documentState = findPullDocumentState(input.state, file);
+    if (currentLocalHash !== void 0) {
+      if (!documentState) {
+        blockers.push(`Existing local file is not owned by pull state: ${file.localPath}`);
+      } else if (documentState.localHash !== currentLocalHash) {
+        blockers.push(`Existing pull-owned file has local changes since last pull: ${file.localPath}`);
+      } else {
+        file.expectedLocalHash = documentState.localHash;
+      }
+    }
+    if (file.kind !== "document") {
+      continue;
+    }
+    const fetched = fetchedDocuments.get(file.docToken);
+    if (!fetched) {
+      blockers.push(`Fetched document is missing for planned file: ${file.docToken}`);
+      continue;
+    }
+    file.expectedRevisionId = fetched.revisionId;
+    const documentAssets = planDocumentAssets(file, fetched.media, assetDirectoryName);
+    assets.push(...documentAssets);
+    const mediaPlans = documentAssets.map((asset) => ({
+      kind: asset.kind,
+      name: asset.name,
+      alt: findFetchedMediaAlt(fetched.media, asset),
+      ...asset.sourceToken ? { sourceToken: asset.sourceToken } : {},
+      ...asset.sourceHref ? { sourceHref: asset.sourceHref } : {},
+      localPath: relativePathFromDocument(file.localPath, asset.localPath)
+    }));
+    const remote = input.scan.documents.find((document) => document.docToken === file.docToken);
+    if (remote) {
+      file.contentHash = sha256Text(
+        renderPullMarkdown({
+          markdown: fetched.markdown,
+          remote: {
+            ...remote,
+            title: fetched.title || remote.title
+          },
+          plannedPath: file.localPath,
+          index: linkIndex,
+          mediaPlans,
+          pulledAt: createdAt
+        }).markdown
+      );
+    }
+  }
+  for (const duplicatePath of findDuplicateLocalPaths(assets)) {
+    blockers.push(`Multiple remote assets map to the same local path: ${duplicatePath}`);
+  }
+  for (const asset of assets) {
+    const currentLocalHash = existingLocalFiles.get(asset.localPath);
+    const assetState = findPullAssetState(input.state, asset);
+    if (currentLocalHash === void 0) {
+      continue;
+    }
+    if (!assetState) {
+      blockers.push(`Existing local asset is not owned by pull state: ${asset.localPath}`);
+    } else if (assetState.hash !== currentLocalHash) {
+      blockers.push(`Existing pull-owned asset has local changes since last pull: ${asset.localPath}`);
+    } else {
+      asset.expectedLocalHash = assetState.hash;
+    }
+  }
+  for (const file of files) {
+    if (file.kind !== "index") {
+      continue;
+    }
+    const index = input.scan.indexes.find((candidate) => candidate.docToken === file.docToken);
+    if (!index) {
+      continue;
+    }
+    file.contentHash = sha256Text(
+      renderPullIndexMarkdown({
+        remote: index,
+        plannedPath: file.localPath,
+        index: linkIndex,
+        pulledAt: createdAt
+      })
+    );
+  }
+  for (const fetched of fetchedDocuments.values()) {
+    if (!filesByDocToken.has(fetched.docToken)) {
+      warnings.push(`Fetched document not present in scan result: ${fetched.docToken}`);
+    }
+  }
+  return {
+    id: proposalId2(createdAt),
+    createdAt,
+    source: input.scan.source,
+    files,
+    assets,
+    blockers,
+    warnings
+  };
+}
+function renderPullProposalMarkdown(proposal) {
+  return [
+    `# Pull Proposal ${proposal.id}`,
+    "",
+    `Created: ${proposal.createdAt}`,
+    "",
+    "## Source",
+    `- Type: ${proposal.source.type}`,
+    `- Token or URL: ${proposal.source.tokenOrUrl}`,
+    ...proposal.source.title ? [`- Title: ${proposal.source.title}`] : [],
+    "",
+    "## Actions",
+    renderList2([
+      ...proposal.files.map((file) => `write ${file.kind} ${file.localPath}`),
+      ...proposal.assets.map((asset) => `download ${asset.kind} ${asset.localPath}`)
+    ]),
+    "",
+    "## Blockers",
+    renderList2(proposal.blockers),
+    "",
+    "## Warnings",
+    renderList2(proposal.warnings),
+    "",
+    "## Planned Files",
+    renderList2(proposal.files.map((file) => `${file.kind} ${file.title} -> ${file.localPath}`)),
+    "",
+    "## Planned Assets",
+    renderList2(proposal.assets.map((asset) => `${asset.kind} ${asset.name} -> ${asset.localPath}`)),
+    ""
+  ].join("\n");
+}
+function proposalId2(createdAt) {
+  return `pull-proposal-${createdAt.replace(/[:.]/g, "-")}`;
+}
+function planPullPaths(input) {
+  const outputDir = normalizeRelativePath(input.outputDir);
+  const namingRules = (input.namingRules ?? []).map((rule) => ({
+    ...rule,
+    localPath: normalizeRelativePath(rule.localPath)
+  }));
+  if (input.scan.source.type === "doc") {
+    return input.scan.documents.map((document) => documentToPlannedFile(document, defaultSingleDocPath(outputDir, document), namingRules, outputDir));
+  }
+  const sourceTitle = input.scan.source.title ?? input.scan.indexes[0]?.title ?? input.scan.documents[0]?.remotePath.split("/")[0] ?? "pull";
+  const sourceRoot = joinRelative(outputDir, cleanMarkdownFilename(sourceTitle));
+  const files = [];
+  for (const index of input.scan.indexes) {
+    files.push(indexToPlannedFile(index, defaultIndexPath(sourceRoot, sourceTitle, index)));
+  }
+  for (const document of input.scan.documents) {
+    files.push(documentToPlannedFile(document, defaultCollectionDocumentPath(sourceRoot, sourceTitle, document), namingRules, outputDir));
+  }
+  return files;
+}
+function buildPullLinkIndex(files) {
+  const index = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    const target = {
+      stem: markdownStem(file.localPath),
+      localPath: file.localPath
+    };
+    index.set(file.docToken, target);
+    if (file.wikiNodeToken) {
+      index.set(file.wikiNodeToken, target);
+    }
+  }
+  return index;
+}
+function documentToPlannedFile(document, defaultLocalPath, namingRules, outputDir) {
+  const rule = namingRules.find((candidate) => matchesNamingRule(candidate, document));
+  const localPath = rule ? joinRelative(outputDir, rule.localPath) : defaultLocalPath;
+  return {
+    kind: "document",
+    title: document.title,
+    docToken: document.docToken,
+    ...document.wikiNodeToken ? { wikiNodeToken: document.wikiNodeToken } : {},
+    ...document.sourceUrl ? { sourceUrl: document.sourceUrl } : {},
+    remotePath: document.remotePath,
+    localPath
+  };
+}
+function indexToPlannedFile(index, localPath) {
+  return {
+    kind: "index",
+    title: index.title,
+    docToken: index.docToken,
+    ...index.wikiNodeToken ? { wikiNodeToken: index.wikiNodeToken } : {},
+    ...index.sourceUrl ? { sourceUrl: index.sourceUrl } : {},
+    remotePath: index.remotePath,
+    childDocTokens: [...index.childDocTokens],
+    localPath
+  };
+}
+function defaultSingleDocPath(outputDir, document) {
+  return joinRelative(outputDir, `${cleanMarkdownFilename(document.title)}.md`);
+}
+function defaultCollectionDocumentPath(sourceRoot, sourceTitle, document) {
+  const relativeSegments = relativeRemoteSegments(document.remotePath, sourceTitle);
+  if (relativeSegments.length === 0) {
+    relativeSegments.push(document.title);
+  }
+  return joinRelative(sourceRoot, ...withMarkdownExtension(relativeSegments));
+}
+function defaultIndexPath(sourceRoot, sourceTitle, index) {
+  const relativeSegments = relativeRemoteSegments(index.remotePath, sourceTitle);
+  if (relativeSegments.length === 0) {
+    return joinRelative(sourceRoot, `${cleanMarkdownFilename(sourceTitle)}.md`);
+  }
+  return joinRelative(sourceRoot, ...relativeSegments.map(cleanMarkdownFilename), `${cleanMarkdownFilename(relativeSegments.at(-1) ?? index.title)}.md`);
+}
+function relativeRemoteSegments(remotePath, sourceTitle) {
+  const segments = remotePath.split("/").filter(Boolean);
+  if (segments[0] === sourceTitle) {
+    return segments.slice(1).map(cleanMarkdownFilename);
+  }
+  return segments.map(cleanMarkdownFilename);
+}
+function withMarkdownExtension(segments) {
+  return segments.map((segment, index) => index === segments.length - 1 ? `${cleanMarkdownFilename(segment)}.md` : cleanMarkdownFilename(segment));
+}
+function matchesNamingRule(rule, document) {
+  return Boolean(
+    rule.match.title && rule.match.title === document.title || rule.match.token && rule.match.token === document.docToken || rule.match.wikiNodeToken && rule.match.wikiNodeToken === document.wikiNodeToken
+  );
+}
+function planDocumentAssets(file, media, assetDirectoryName) {
+  const paths = /* @__PURE__ */ new Set();
+  return media.map((item) => {
+    const name = cleanAssetName(item);
+    const localPath = uniquePath(
+      joinRelative(posix3.dirname(file.localPath), assetDirectoryName, markdownStem(file.localPath), name),
+      paths
+    );
+    return {
+      ownerDocToken: file.docToken,
+      kind: item.kind,
+      name,
+      ...item.token ? { sourceToken: item.token } : {},
+      ...item.href ? { sourceHref: item.href } : {},
+      localPath
+    };
+  });
+}
+function cleanAssetName(media) {
+  const fallback = media.token ?? media.href?.split(/[/?#]/).filter(Boolean).at(-1) ?? media.kind;
+  return cleanMarkdownFilename((media.name || fallback).split(/[\\/]/).at(-1) ?? fallback);
+}
+function uniquePath(path, seen) {
+  if (!seen.has(path)) {
+    seen.add(path);
+    return path;
+  }
+  const extension = posix3.extname(path);
+  const base = path.slice(0, extension ? -extension.length : void 0);
+  let index = 2;
+  let candidate = `${base}-${index}${extension}`;
+  while (seen.has(candidate)) {
+    index += 1;
+    candidate = `${base}-${index}${extension}`;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+function findFetchedMediaAlt(media, asset) {
+  return media.find((item) => item.token === asset.sourceToken || item.href === asset.sourceHref || item.name === asset.name)?.alt ?? "";
+}
+function relativePathFromDocument(documentPath, assetPath) {
+  const relative4 = posix3.relative(posix3.dirname(documentPath), assetPath);
+  return normalizeRelativePath(relative4);
+}
+function findDuplicateLocalPaths(items) {
+  const seen = /* @__PURE__ */ new Set();
+  const duplicates = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    if (seen.has(item.localPath)) {
+      duplicates.add(item.localPath);
+    }
+    seen.add(item.localPath);
+  }
+  return [...duplicates];
+}
+function findPullDocumentState(state, file) {
+  const byPath = state.pull.documents[file.localPath];
+  if (byPath?.localPath === file.localPath && byPath.docToken === file.docToken) {
+    return byPath;
+  }
+  return Object.values(state.pull.documents).find(
+    (document) => document.docToken === file.docToken && document.localPath === file.localPath
+  );
+}
+function findPullAssetState(state, asset) {
+  const byPath = state.pull.assets[asset.localPath];
+  if (byPath?.localPath === asset.localPath && byPath.ownerDocToken === asset.ownerDocToken) {
+    return byPath;
+  }
+  return Object.values(state.pull.assets).find(
+    (candidate) => candidate.ownerDocToken === asset.ownerDocToken && candidate.localPath === asset.localPath
+  );
+}
+function toFetchedDocumentMap(value) {
+  if (value instanceof Map) {
+    return value;
+  }
+  return new Map(Object.entries(value));
+}
+function toExistingLocalFiles(value) {
+  if (!value) {
+    return /* @__PURE__ */ new Map();
+  }
+  if (value instanceof Map) {
+    return new Map([...value.entries()].map(([path, hash]) => [normalizeRelativePath(path), hash]));
+  }
+  return new Map(Object.entries(value).map(([path, hash]) => [normalizeRelativePath(path), hash]));
+}
+function renderScanWarning(warning) {
+  return warning.message;
+}
+function renderList2(items) {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items.map((item) => `- ${item}`).join("\n");
+}
+function markdownStem(path) {
+  const basename3 = posix3.basename(path);
+  return basename3.endsWith(".md") ? basename3.slice(0, -3) : basename3;
+}
+function joinRelative(...parts) {
+  return normalizeRelativePath(posix3.join(...parts.filter((part) => part !== "")));
+}
+function normalizeRelativePath(path) {
+  const posixPath = path.replace(/\\/g, "/").trim();
+  if (!posixPath || posixPath === ".") {
+    return "";
+  }
+  if (posix3.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  const normalized = posix3.normalize(posixPath).replace(/^\.\//, "");
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return normalized;
+}
+function toIsoString2(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+  return (value ?? /* @__PURE__ */ new Date()).toISOString();
+}
+
+// scripts/lib/pull-apply.ts
+async function applyPullProposal(options) {
+  const run = options.run ?? runCommand;
+  const loadRootState2 = options.loadRootState ?? loadRootState;
+  const saveRootState2 = options.saveRootState ?? saveRootState;
+  const now = options.now ?? (() => /* @__PURE__ */ new Date());
+  const writtenFiles = [];
+  const writtenAssets = [];
+  const cleanupTargets = [];
+  try {
+    const configPath = resolve4(options.configPath);
+    const proposalPath = resolve4(options.proposalPath);
+    const config = parseConfig(await readUtf8(configPath));
+    const pullConfig = requirePullConfig(config);
+    const proposal = await readJson(proposalPath);
+    const sourceProblem = validateProposalSource(proposal, pullConfig);
+    if (sourceProblem) {
+      return {
+        ok: false,
+        status: "blocked",
+        problems: [sourceProblem],
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    if (proposal.blockers.length > 0) {
+      return {
+        ok: false,
+        status: "blocked",
+        problems: proposal.blockers,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    const workspaceRoot = resolve4(dirname5(configPath), config.workspaceRoot);
+    const pathSafety = await createPathSafetyContext(workspaceRoot);
+    const statePath = resolve4(workspaceRoot, config.statePath);
+    const state = await loadRootState2(statePath, config.remoteFolderToken);
+    const safeFiles = /* @__PURE__ */ new Map();
+    const safeAssets = /* @__PURE__ */ new Map();
+    const stagedFiles = /* @__PURE__ */ new Map();
+    const stagedAssets = /* @__PURE__ */ new Map();
+    const localProblems = [];
+    const applyStartedAt = now();
+    const stagingRoot = safeWorkspacePath(
+      workspaceRoot,
+      posix4.join(".git-your-lark", "apply-staging", `${sanitizePathSegment(proposal.id)}-${applyStartedAt.getTime()}`)
+    );
+    const backupRoot = safeWorkspacePath(
+      workspaceRoot,
+      posix4.join(".git-your-lark", "apply-backups", `${sanitizePathSegment(proposal.id)}-${applyStartedAt.getTime()}`)
+    );
+    cleanupTargets.push(stagingRoot.absolutePath, backupRoot.absolutePath);
+    await assertSafeTargetPath(pathSafety, stagingRoot);
+    await assertSafeTargetPath(pathSafety, backupRoot);
+    for (const file of proposal.files) {
+      const safePath = safeWorkspacePath(workspaceRoot, file.localPath);
+      await assertSafeTargetPath(pathSafety, safePath);
+      safeFiles.set(file, safePath);
+      const stagedPath = safeWorkspacePath(workspaceRoot, posix4.join(stagingRoot.relativePath, safePath.relativePath));
+      await assertSafeTargetPath(pathSafety, stagedPath);
+      stagedFiles.set(file, stagedPath);
+      const problem = await validateFileOverwrite(file, safePath, state);
+      if (problem) {
+        localProblems.push(problem);
+      }
+    }
+    for (const asset of proposal.assets) {
+      const safePath = safeWorkspacePath(workspaceRoot, asset.localPath);
+      await assertSafeTargetPath(pathSafety, safePath);
+      safeAssets.set(asset, safePath);
+      const stagedPath = safeWorkspacePath(workspaceRoot, posix4.join(stagingRoot.relativePath, safePath.relativePath));
+      await assertSafeTargetPath(pathSafety, stagedPath);
+      stagedAssets.set(asset, stagedPath);
+      const problem = await validateAssetOverwrite(asset, safePath, state);
+      if (problem) {
+        localProblems.push(problem);
+      }
+    }
+    if (localProblems.length > 0) {
+      return {
+        ok: false,
+        status: "conflict",
+        problems: localProblems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    const fetchedByToken = /* @__PURE__ */ new Map();
+    const revisionProblems = [];
+    for (const file of proposal.files) {
+      const fetched = await fetchPullDocument(file.docToken, run);
+      fetchedByToken.set(file.docToken, fetched);
+      if (file.expectedRevisionId && fetched.revisionId !== file.expectedRevisionId) {
+        revisionProblems.push(
+          `Remote document changed since proposal for ${file.localPath}: expected revision ${file.expectedRevisionId}, found ${fetched.revisionId ?? "missing"}`
+        );
+      }
+    }
+    if (revisionProblems.length > 0) {
+      return {
+        ok: false,
+        status: "conflict",
+        problems: revisionProblems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    const pulledAt = applyStartedAt.toISOString();
+    const renderedFiles = renderPlannedFiles(proposal, fetchedByToken, pulledAt);
+    const assetHashes = /* @__PURE__ */ new Map();
+    const fileHashes = /* @__PURE__ */ new Map();
+    for (const asset of proposal.assets) {
+      const stagedPath = requireSafePath(stagedAssets, asset);
+      const hash = await downloadAsset(asset, stagedPath, workspaceRoot, pathSafety, run);
+      assetHashes.set(asset.localPath, hash);
+    }
+    for (const rendered of renderedFiles) {
+      const stagedPath = requireSafePath(stagedFiles, rendered.file);
+      await writeUtf8(stagedPath.absolutePath, rendered.markdown);
+      fileHashes.set(rendered.file.localPath, await currentTextHashOrThrow(stagedPath.absolutePath));
+    }
+    const finalProblems = [];
+    for (const file of proposal.files) {
+      const problem = await validateFileOverwrite(file, requireSafePath(safeFiles, file), state);
+      if (problem) {
+        finalProblems.push(problem);
+      }
+    }
+    for (const asset of proposal.assets) {
+      const problem = await validateAssetOverwrite(asset, requireSafePath(safeAssets, asset), state);
+      if (problem) {
+        finalProblems.push(problem);
+      }
+    }
+    if (finalProblems.length > 0) {
+      return {
+        ok: false,
+        status: "conflict",
+        problems: finalProblems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    const nextState = nextPullState(state);
+    for (const asset of proposal.assets) {
+      nextState.pull.assets[asset.localPath] = {
+        ...asset.sourceToken ? { sourceToken: asset.sourceToken } : {},
+        ...asset.sourceHref ? { sourceUrl: asset.sourceHref } : {},
+        localPath: asset.localPath,
+        ownerDocToken: asset.ownerDocToken,
+        hash: assetHashes.get(asset.localPath) ?? ""
+      };
+    }
+    for (const rendered of renderedFiles) {
+      nextState.pull.documents[rendered.file.localPath] = {
+        docToken: rendered.file.docToken,
+        ...rendered.file.wikiNodeToken ? { wikiNodeToken: rendered.file.wikiNodeToken } : {},
+        ...rendered.file.sourceUrl ? { sourceUrl: rendered.file.sourceUrl } : {},
+        remoteTitle: rendered.remoteTitle,
+        remotePath: rendered.file.remotePath,
+        localPath: rendered.file.localPath,
+        ...rendered.revisionId ? { remoteRevision: rendered.revisionId } : {},
+        localHash: fileHashes.get(rendered.file.localPath) ?? rendered.hash,
+        assetPaths: rendered.assetPaths
+      };
+    }
+    const replacements = [
+      ...proposal.assets.map((asset) => {
+        const finalPath = requireSafePath(safeAssets, asset);
+        return {
+          kind: "asset",
+          localPath: asset.localPath,
+          finalPath,
+          stagedPath: requireSafePath(stagedAssets, asset),
+          backupPath: safeWorkspacePath(workspaceRoot, posix4.join(backupRoot.relativePath, finalPath.relativePath)),
+          existed: false
+        };
+      }),
+      ...renderedFiles.map((rendered) => {
+        const finalPath = requireSafePath(safeFiles, rendered.file);
+        return {
+          kind: "file",
+          localPath: rendered.file.localPath,
+          finalPath,
+          stagedPath: requireSafePath(stagedFiles, rendered.file),
+          backupPath: safeWorkspacePath(workspaceRoot, posix4.join(backupRoot.relativePath, finalPath.relativePath)),
+          existed: false
+        };
+      })
+    ];
+    let stateSnapshot;
+    let stateSaveStarted = false;
+    try {
+      stateSnapshot = await snapshotStateFile(statePath);
+      await backupFinalPaths(replacements, pathSafety);
+      for (const replacement of replacements) {
+        await replaceFromStaging(replacement, pathSafety);
+        if (replacement.kind === "asset") {
+          writtenAssets.push(replacement.localPath);
+        } else {
+          writtenFiles.push(replacement.localPath);
+        }
+      }
+      stateSaveStarted = true;
+      await saveRootState2(statePath, nextState);
+    } catch (error) {
+      const problems = [error instanceof Error ? error.message : String(error)];
+      if (stateSaveStarted && stateSnapshot) {
+        problems.push(...await restoreStateFile(statePath, stateSnapshot));
+      }
+      problems.push(...await rollbackFinalPaths(replacements, pathSafety));
+      return {
+        ok: false,
+        status: "failed",
+        problems,
+        writtenFiles,
+        writtenAssets
+      };
+    }
+    return {
+      ok: true,
+      status: "applied",
+      problems: [],
+      writtenFiles,
+      writtenAssets
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: "failed",
+      problems: [error instanceof Error ? error.message : String(error)],
+      writtenFiles,
+      writtenAssets
+    };
+  } finally {
+    await cleanupBestEffort(cleanupTargets);
+  }
+}
+function validateProposalSource(proposal, pullConfig) {
+  const expectedType = pullConfig.source.type;
+  const expectedTokenOrUrl = pullConfig.source.tokenOrUrl.trim();
+  const foundType = proposal.source.type;
+  const foundTokenOrUrl = proposal.source.tokenOrUrl.trim();
+  if (expectedType === foundType && expectedTokenOrUrl === foundTokenOrUrl) {
+    return void 0;
+  }
+  return `Pull proposal source does not match current config: expected ${expectedType} ${expectedTokenOrUrl}, found ${foundType} ${foundTokenOrUrl}`;
+}
+async function backupFinalPaths(replacements, pathSafety) {
+  for (const replacement of replacements) {
+    try {
+      await assertSafeTargetPath(pathSafety, replacement.finalPath);
+      await assertSafeTargetPath(pathSafety, replacement.backupPath);
+      await mkdir2(dirname5(replacement.backupPath.absolutePath), { recursive: true });
+      await copyFile(replacement.finalPath.absolutePath, replacement.backupPath.absolutePath);
+      replacement.existed = true;
+    } catch (error) {
+      if (!isEnoent(error)) {
+        throw error;
+      }
+      replacement.existed = false;
+    }
+  }
+}
+async function replaceFromStaging(replacement, pathSafety) {
+  await assertSafeTargetPath(pathSafety, replacement.stagedPath);
+  await assertSafeTargetPath(pathSafety, replacement.finalPath);
+  await mkdir2(dirname5(replacement.finalPath.absolutePath), { recursive: true });
+  await copyFile(replacement.stagedPath.absolutePath, replacement.finalPath.absolutePath);
+}
+async function rollbackFinalPaths(replacements, pathSafety) {
+  const problems = [];
+  for (const replacement of [...replacements].reverse()) {
+    try {
+      await assertSafeTargetPath(pathSafety, replacement.finalPath);
+      if (replacement.existed) {
+        await assertSafeTargetPath(pathSafety, replacement.backupPath);
+        await mkdir2(dirname5(replacement.finalPath.absolutePath), { recursive: true });
+        await copyFile(replacement.backupPath.absolutePath, replacement.finalPath.absolutePath);
+      } else {
+        await rm3(replacement.finalPath.absolutePath, { force: true });
+      }
+    } catch (error) {
+      problems.push(
+        `Failed to roll back ${replacement.localPath}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  return problems;
+}
+async function snapshotStateFile(path) {
+  try {
+    return { existed: true, contents: await readFile3(path) };
+  } catch (error) {
+    if (isEnoent(error)) {
+      return { existed: false };
+    }
+    throw error;
+  }
+}
+async function restoreStateFile(path, snapshot) {
+  try {
+    if (snapshot.existed) {
+      await mkdir2(dirname5(path), { recursive: true });
+      await writeFile3(path, snapshot.contents ?? Buffer.alloc(0));
+    } else {
+      await rm3(path, { force: true });
+    }
+    return [];
+  } catch (error) {
+    return [`Failed to restore state file: ${error instanceof Error ? error.message : String(error)}`];
+  }
+}
+async function cleanupBestEffort(paths) {
+  for (const path of paths) {
+    try {
+      await rm3(path, { recursive: true, force: true });
+    } catch {
+    }
+  }
+}
+function renderPlannedFiles(proposal, fetchedByToken, pulledAt) {
+  const linkIndex = buildPullLinkIndex(proposal.files);
+  const assetsByOwner = groupAssetsByOwner(proposal.assets);
+  const rendered = [];
+  for (const file of proposal.files) {
+    if (file.kind === "document") {
+      const fetched2 = fetchedByToken.get(file.docToken);
+      if (!fetched2) {
+        throw new Error(`Fetched document is missing for planned file: ${file.docToken}`);
+      }
+      const ownedAssets = assetsByOwner.get(file.docToken) ?? [];
+      const remote2 = plannedDocumentToRemote(file, proposal, fetched2);
+      const mediaPlans = ownedAssets.map((asset) => ({
+        kind: asset.kind,
+        name: asset.name,
+        alt: findFetchedMediaAlt2(fetched2.media, asset),
+        ...asset.sourceToken ? { sourceToken: asset.sourceToken } : {},
+        ...asset.sourceHref ? { sourceHref: asset.sourceHref } : {},
+        localPath: relativePathFromDocument2(file.localPath, asset.localPath)
+      }));
+      const markdown2 = renderPullMarkdown({
+        markdown: fetched2.markdown,
+        remote: remote2,
+        plannedPath: file.localPath,
+        index: linkIndex,
+        mediaPlans,
+        pulledAt
+      }).markdown;
+      rendered.push({
+        file,
+        remoteTitle: remote2.title,
+        markdown: markdown2,
+        hash: sha256Text(markdown2),
+        ...fetched2.revisionId ? { revisionId: fetched2.revisionId } : {},
+        assetPaths: ownedAssets.map((asset) => asset.localPath)
+      });
+      continue;
+    }
+    const fetched = fetchedByToken.get(file.docToken);
+    const remote = plannedIndexToRemote(file, proposal, fetched);
+    const markdown = renderPullIndexMarkdown({
+      remote,
+      plannedPath: file.localPath,
+      index: linkIndex,
+      pulledAt
+    });
+    rendered.push({
+      file,
+      remoteTitle: remote.title,
+      markdown,
+      hash: sha256Text(markdown),
+      ...fetched?.revisionId ? { revisionId: fetched.revisionId } : {},
+      assetPaths: []
+    });
+  }
+  return rendered;
+}
+async function validateFileOverwrite(file, safePath, state) {
+  const currentHash = await currentTextHash(safePath.absolutePath);
+  if (!currentHash) {
+    return void 0;
+  }
+  const owned = findPullDocumentState2(state, file);
+  if (!owned || !file.expectedLocalHash) {
+    return `Existing local file is not owned by pull state: ${file.localPath}`;
+  }
+  if (currentHash !== file.expectedLocalHash) {
+    return `Existing pull-owned file has local changes since proposal: ${file.localPath}`;
+  }
+  if (owned.localHash !== file.expectedLocalHash) {
+    return `Existing pull-owned file state differs from proposal: ${file.localPath}`;
+  }
+  return void 0;
+}
+async function validateAssetOverwrite(asset, safePath, state) {
+  const currentHash = await currentBufferHash(safePath.absolutePath);
+  if (!currentHash) {
+    return void 0;
+  }
+  const owned = findPullAssetState2(state, asset);
+  if (!owned || !asset.expectedLocalHash) {
+    return `Existing local asset is not owned by pull state: ${asset.localPath}`;
+  }
+  if (currentHash !== asset.expectedLocalHash) {
+    return `Existing pull-owned asset has local changes since proposal: ${asset.localPath}`;
+  }
+  if (owned.hash !== asset.expectedLocalHash) {
+    return `Existing pull-owned asset state differs from proposal: ${asset.localPath}`;
+  }
+  return void 0;
+}
+async function downloadAsset(asset, safePath, workspaceRoot, pathSafety, run) {
+  await assertSafeTargetPath(pathSafety, safePath);
+  await mkdir2(dirname5(safePath.absolutePath), { recursive: true });
+  if (asset.sourceToken) {
+    const result = await run(
+      "lark-cli",
+      [
+        "docs",
+        "+media-download",
+        "--as",
+        "user",
+        "--token",
+        asset.sourceToken,
+        "--output",
+        safePath.relativePath
+      ],
+      workspaceRoot
+    );
+    assertCommandSucceeded2(`download asset ${asset.localPath}`, result);
+    return currentBufferHashOrThrow(safePath.absolutePath);
+  }
+  if (!asset.sourceHref) {
+    throw new Error(`Planned asset has neither sourceToken nor sourceHref: ${asset.localPath}`);
+  }
+  const response = await fetch(asset.sourceHref);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch asset ${asset.sourceHref}: ${response.status} ${response.statusText}`);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  await writeFile3(safePath.absolutePath, bytes);
+  return sha256Buffer(bytes);
+}
+function plannedDocumentToRemote(file, proposal, fetched) {
+  return {
+    sourceKind: proposal.source.type,
+    title: fetched.title || file.title,
+    docToken: file.docToken,
+    ...file.wikiNodeToken ? { wikiNodeToken: file.wikiNodeToken } : {},
+    ...file.sourceUrl ? { sourceUrl: file.sourceUrl } : {},
+    remotePath: file.remotePath
+  };
+}
+function plannedIndexToRemote(file, proposal, fetched) {
+  return {
+    title: fetched?.title || file.title,
+    docToken: file.docToken,
+    ...file.wikiNodeToken ? { wikiNodeToken: file.wikiNodeToken } : {},
+    ...file.sourceUrl ? { sourceUrl: file.sourceUrl } : {},
+    remotePath: file.remotePath,
+    childDocTokens: file.childDocTokens ?? indexChildDocTokens(file, proposal.files)
+  };
+}
+function indexChildDocTokens(indexFile, files) {
+  const childPrefix = `${indexFile.remotePath.replace(/\/+$/g, "")}/`;
+  const directChildren = files.filter((file) => file.kind === "document" && file.remotePath.startsWith(childPrefix)).map((file) => file.docToken);
+  if (directChildren.length > 0) {
+    return directChildren;
+  }
+  return files.filter((file) => file.kind === "document").map((file) => file.docToken);
+}
+function groupAssetsByOwner(assets) {
+  const grouped = /* @__PURE__ */ new Map();
+  for (const asset of assets) {
+    const existing = grouped.get(asset.ownerDocToken) ?? [];
+    existing.push(asset);
+    grouped.set(asset.ownerDocToken, existing);
+  }
+  return grouped;
+}
+function findFetchedMediaAlt2(media, asset) {
+  return media.find(
+    (item) => asset.sourceToken && item.token === asset.sourceToken || asset.sourceHref && item.href === asset.sourceHref || item.name === asset.name
+  )?.alt ?? "";
+}
+function relativePathFromDocument2(documentPath, assetPath) {
+  return normalizeRelativePath2(posix4.relative(posix4.dirname(documentPath), assetPath));
+}
+function findPullDocumentState2(state, file) {
+  const byPath = state.pull.documents[file.localPath];
+  if (byPath?.localPath === file.localPath && byPath.docToken === file.docToken) {
+    return byPath;
+  }
+  return Object.values(state.pull.documents).find(
+    (document) => document.localPath === file.localPath && document.docToken === file.docToken
+  );
+}
+function findPullAssetState2(state, asset) {
+  const byPath = state.pull.assets[asset.localPath];
+  if (byPath?.localPath === asset.localPath && byPath.ownerDocToken === asset.ownerDocToken) {
+    return byPath;
+  }
+  return Object.values(state.pull.assets).find(
+    (candidate) => candidate.localPath === asset.localPath && candidate.ownerDocToken === asset.ownerDocToken
+  );
+}
+function nextPullState(state) {
+  return {
+    ...state,
+    publish: {
+      ...state.publish,
+      documents: { ...state.publish.documents },
+      attachments: { ...state.publish.attachments }
+    },
+    pull: {
+      sources: { ...state.pull.sources },
+      documents: { ...state.pull.documents },
+      assets: { ...state.pull.assets }
+    }
+  };
+}
+async function currentTextHash(path) {
+  try {
+    return sha256Text(await readUtf8(path));
+  } catch (error) {
+    if (isEnoent(error)) {
+      return void 0;
+    }
+    throw error;
+  }
+}
+async function currentTextHashOrThrow(path) {
+  return sha256Text(await readUtf8(path));
+}
+async function currentBufferHash(path) {
+  try {
+    return sha256Buffer(await readFile3(path));
+  } catch (error) {
+    if (isEnoent(error)) {
+      return void 0;
+    }
+    throw error;
+  }
+}
+async function currentBufferHashOrThrow(path) {
+  return sha256Buffer(await readFile3(path));
+}
+function safeWorkspacePath(workspaceRoot, path) {
+  const relativePath = normalizeRelativePath2(path);
+  const absolutePath = resolve4(workspaceRoot, ...relativePath.split("/"));
+  const fromRoot = relative2(workspaceRoot, absolutePath);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep2}`) || isAbsolute(fromRoot)) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return { relativePath, absolutePath };
+}
+async function createPathSafetyContext(workspaceRoot) {
+  const resolvedWorkspaceRoot = resolve4(workspaceRoot);
+  return {
+    realWorkspaceRoot: await realpath(resolvedWorkspaceRoot)
+  };
+}
+async function assertSafeTargetPath(pathSafety, safePath) {
+  const realExistingPath = await realExistingAncestor(safePath.absolutePath);
+  if (!isInsidePath(pathSafety.realWorkspaceRoot, realExistingPath)) {
+    throw new Error(`Path escapes the workspace root: ${safePath.relativePath}`);
+  }
+}
+async function realExistingAncestor(path) {
+  let candidate = path;
+  while (true) {
+    try {
+      return await realpath(candidate);
+    } catch (error) {
+      if (!isEnoent(error)) {
+        throw error;
+      }
+      const parent = dirname5(candidate);
+      if (parent === candidate) {
+        throw error;
+      }
+      candidate = parent;
+    }
+  }
+}
+function isInsidePath(root, target) {
+  const fromRoot = relative2(root, target);
+  return fromRoot === "" || !fromRoot.startsWith(`..${sep2}`) && fromRoot !== ".." && !isAbsolute(fromRoot);
+}
+function normalizeRelativePath2(path) {
+  const posixPath = path.replace(/\\/g, "/").trim();
+  if (!posixPath || posixPath === ".") {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  if (posix4.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  const normalized = posix4.normalize(posixPath).replace(/^\.\//, "");
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return normalized;
+}
+function sanitizePathSegment(value) {
+  return value.replace(/[^A-Za-z0-9._-]/g, "-") || "proposal";
+}
+function requireSafePath(paths, item) {
+  const safePath = paths.get(item);
+  if (!safePath) {
+    throw new Error(`Missing validated path for ${item.localPath}`);
+  }
+  return safePath;
+}
+function isEnoent(error) {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+function assertCommandSucceeded2(action, result) {
+  if (result.code !== 0) {
+    throw new Error(`lark-cli failed to ${action}
+stdout:
+${result.stdout}
+stderr:
+${result.stderr}`);
+  }
+}
+
+// scripts/lib/pull-source.ts
+async function scanPullSource(source, run = runCommand) {
+  if (source.type === "doc") {
+    return resolveSingleDocSource(source.tokenOrUrl, run);
+  }
+  if (source.type === "folder") {
+    return scanDriveFolderSource(source.tokenOrUrl, run);
+  }
+  if (source.type === "wiki_node") {
+    return scanWikiNodeSource(source.tokenOrUrl, run);
+  }
+  throw new Error(`Unsupported pull source type: ${String(source.type)}`);
+}
+async function resolveSingleDocSource(tokenOrUrl, run = runCommand) {
+  const item = toDriveItem(await inspectDriveDocument(tokenOrUrl, run));
+  if (!isPullableType(item.type)) {
+    throw new Error(`Unsupported document source type: ${item.type || "unknown"}`);
+  }
+  return {
+    source: {
+      type: "doc",
+      tokenOrUrl,
+      ...item.title ? { title: item.title } : {}
+    },
+    documents: [toPullDocument("doc", item, item.title)],
+    indexes: [],
+    warnings: []
+  };
+}
+async function scanDriveFolderSource(tokenOrUrl, run = runCommand) {
+  const root = isUrl(tokenOrUrl) ? toDriveItem(await inspectDriveUrl(tokenOrUrl, run)) : void 0;
+  const folderToken = root?.token || tokenOrUrl;
+  const rootTitle = root?.title;
+  const documents = [];
+  const warnings = [];
+  const duplicates = createDuplicateTracker();
+  const folders = [{ token: folderToken, path: rootTitle ?? "" }];
+  for (let index = 0; index < folders.length; index += 1) {
+    const folder = folders[index];
+    const childFolders = [];
+    for (const item of await listDriveFolderItems(folder.token, run)) {
+      const remotePath = joinRemotePath(folder.path, item.title);
+      if (isPullableType(item.type)) {
+        addDocument(documents, warnings, duplicates, toPullDocument("folder", item, remotePath), item.type);
+      } else if (item.type === "folder") {
+        childFolders.push({ token: item.token, path: remotePath });
+      } else {
+        warnings.push(toWarning(item));
+      }
+    }
+    folders.push(...childFolders);
+  }
+  return {
+    source: {
+      type: "folder",
+      tokenOrUrl,
+      ...rootTitle ? { title: rootTitle } : {}
+    },
+    documents,
+    indexes: [],
+    warnings
+  };
+}
+async function scanWikiNodeSource(tokenOrUrl, run = runCommand) {
+  const nodeToken = isUrl(tokenOrUrl) ? wikiNodeTokenFromInspect(await inspectDriveUrl(tokenOrUrl, run)) : tokenOrUrl;
+  const rootNode = toWikiNode(await getWikiNode(nodeToken, run));
+  const documents = [];
+  const indexes = [];
+  const warnings = [];
+  const duplicates = createDuplicateTracker();
+  const rootChildDocTokens = rootNode.hasChild ? await scanWikiChildren(rootNode, rootNode.title, run, documents, indexes, warnings, duplicates) : [];
+  if (rootNode.hasChild && isPullableWikiNode(rootNode)) {
+    indexes.unshift({
+      title: rootNode.title,
+      docToken: rootNode.docToken,
+      wikiNodeToken: rootNode.nodeToken,
+      remotePath: rootNode.title,
+      childDocTokens: rootChildDocTokens
+    });
+  } else if (isPullableWikiNode(rootNode)) {
+    addDocument(documents, warnings, duplicates, toWikiDocument(rootNode, rootNode.title), rootNode.objType);
+  } else {
+    warnings.push(toWarning(wikiNodeToWarningItem(rootNode, rootNode.hasChild ? rootNode.title : void 0)));
+  }
+  return {
+    source: {
+      type: "wiki_node",
+      tokenOrUrl,
+      ...rootNode.title ? { title: rootNode.title } : {}
+    },
+    documents,
+    indexes,
+    warnings
+  };
+}
+async function scanWikiChildren(parent, parentPath, run, documents, indexes, warnings, duplicates) {
+  const children = await listWikiChildren(parent, run);
+  const childDocTokens = [];
+  for (const child of children) {
+    const remotePath = joinRemotePath(parentPath, child.title);
+    if (isPullableWikiNode(child)) {
+      addDocument(documents, warnings, duplicates, toWikiDocument(child, remotePath), child.objType);
+      childDocTokens.push(child.docToken);
+    } else {
+      warnings.push(toWarning(wikiNodeToWarningItem(child, child.hasChild ? remotePath : void 0)));
+    }
+    if (child.hasChild) {
+      const descendantDocTokens = await scanWikiChildren(child, remotePath, run, documents, indexes, warnings, duplicates);
+      if (isPullableWikiNode(child)) {
+        indexes.push({
+          title: child.title,
+          docToken: child.docToken,
+          wikiNodeToken: child.nodeToken,
+          remotePath,
+          childDocTokens: descendantDocTokens
+        });
+      }
+    }
+  }
+  return childDocTokens;
+}
+async function inspectDriveDocument(tokenOrUrl, run) {
+  if (isUrl(tokenOrUrl)) {
+    return inspectDriveUrl(tokenOrUrl, run);
+  }
+  const docxResult = await runInspectDriveCommand(tokenOrUrl, run, "docx");
+  if (docxResult.code === 0) {
+    return extractJson(docxResult.stdout);
+  }
+  const docResult = await runInspectDriveCommand(tokenOrUrl, run, "doc");
+  if (docResult.code === 0) {
+    return extractJson(docResult.stdout);
+  }
+  throw new Error(
+    `lark-cli pull source inspect failed
+docx stdout:
+${docxResult.stdout}
+docx stderr:
+${docxResult.stderr}
+doc stdout:
+${docResult.stdout}
+doc stderr:
+${docResult.stderr}`
+  );
+}
+async function inspectDriveUrl(tokenOrUrl, run) {
+  const result = await runInspectDriveCommand(tokenOrUrl, run);
+  if (result.code !== 0) {
+    throw new Error(`lark-cli pull source inspect failed
+stdout:
+${result.stdout}
+stderr:
+${result.stderr}`);
+  }
+  return extractJson(result.stdout);
+}
+async function runInspectDriveCommand(tokenOrUrl, run, type) {
+  const args = [
+    "drive",
+    "+inspect",
+    "--as",
+    "user",
+    "--url",
+    tokenOrUrl,
+    ...type ? ["--type", type] : [],
+    "--format",
+    "json"
+  ];
+  return run("lark-cli", args);
+}
+async function listDriveFolderItems(folderToken, run) {
+  const items = [];
+  let pageToken;
+  do {
+    const params = {
+      folder_token: folderToken,
+      page_size: 200,
+      ...pageToken ? { page_token: pageToken } : {}
+    };
+    const page = extractListPage2(
+      await runJsonCommand(
+        "lark-cli pull folder scan failed",
+        "lark-cli",
+        ["drive", "files", "list", "--as", "user", "--params", JSON.stringify(params), "--format", "json"],
+        run
+      )
+    );
+    items.push(...(page.files ?? page.items ?? []).map(toDriveItem));
+    if (page.has_more) {
+      if (!page.next_page_token?.trim()) {
+        throw new Error("lark-cli pull folder scan failed: missing next_page_token while has_more is true.");
+      }
+      pageToken = page.next_page_token;
+    } else {
+      pageToken = void 0;
+    }
+  } while (pageToken);
+  return items;
+}
+async function getWikiNode(nodeToken, run) {
+  return runJsonCommand(
+    "lark-cli pull wiki node get failed",
+    "lark-cli",
+    ["wiki", "+node-get", "--as", "user", "--node-token", nodeToken, "--format", "json"],
+    run
+  );
+}
+async function listWikiChildren(parent, run) {
+  if (!parent.spaceId) {
+    throw new Error(`lark-cli pull wiki node list failed: missing space_id for ${parent.nodeToken}`);
+  }
+  const value = await runJsonCommand(
+    "lark-cli pull wiki node list failed",
+    "lark-cli",
+    [
+      "wiki",
+      "+node-list",
+      "--as",
+      "user",
+      "--space-id",
+      parent.spaceId,
+      "--parent-node-token",
+      parent.nodeToken,
+      "--page-all",
+      "--page-limit",
+      "0",
+      "--format",
+      "json"
+    ],
+    run
+  );
+  return extractNodeList(value).map((node) => {
+    const child = toWikiNode(node);
+    return {
+      ...child,
+      spaceId: child.spaceId || parent.spaceId
+    };
+  });
+}
+async function runJsonCommand(message, command, args, run) {
+  const result = await run(command, args);
+  if (result.code !== 0) {
+    throw new Error(`${message}
+stdout:
+${result.stdout}
+stderr:
+${result.stderr}`);
+  }
+  return extractJson(result.stdout);
+}
+function extractListPage2(value) {
+  const root = value;
+  return root.data ?? root;
+}
+function extractNodeList(value) {
+  const data = unwrapData(value);
+  const items = data.items ?? data.nodes ?? data.children ?? [];
+  return Array.isArray(items) ? items : [];
+}
+function wikiNodeTokenFromInspect(value) {
+  const data = unwrapData(value);
+  const nested = data.wiki_node ?? data.wikiNode ?? data.wiki_node_info ?? data.wikiNodeInfo;
+  if (nested !== void 0) {
+    if (!isRecord(nested)) {
+      throw new Error("lark-cli pull wiki inspect failed: wiki_node is not an object.");
+    }
+    const nestedToken = stringValue2(nested.node_token ?? nested.wiki_node_token ?? nested.token);
+    if (!nestedToken) {
+      throw new Error("lark-cli pull wiki inspect failed: missing wiki_node.node_token.");
+    }
+    return nestedToken;
+  }
+  const fallbackToken = toWikiNode(value).nodeToken;
+  if (!fallbackToken) {
+    throw new Error("lark-cli pull wiki inspect failed: missing wiki node token.");
+  }
+  return fallbackToken;
+}
+function toDriveItem(value) {
+  const item = unwrapData(value);
+  return {
+    title: stringValue2(item.name ?? item.title),
+    token: stringValue2(item.token ?? item.file_token ?? item.obj_token ?? item.doc_token ?? item.folder_token),
+    type: stringValue2(item.type ?? item.file_type ?? item.obj_type),
+    ...item.url ? { url: String(item.url) } : {},
+    ...item.modified_time || item.modifiedTime ? { modifiedTime: String(item.modified_time ?? item.modifiedTime) } : {}
+  };
+}
+function toWikiNode(value) {
+  const node = unwrapNode(value);
+  return {
+    title: stringValue2(node.title ?? node.name),
+    nodeToken: stringValue2(node.node_token ?? node.wiki_node_token ?? node.token),
+    docToken: stringValue2(node.obj_token ?? node.doc_token ?? node.document_token),
+    objType: stringValue2(node.obj_type ?? node.type),
+    nodeType: stringValue2(node.node_type),
+    hasChild: booleanValue(node.has_child ?? node.hasChild),
+    ...node.space_id || node.spaceId ? { spaceId: String(node.space_id ?? node.spaceId) } : {},
+    ...node.url ? { url: String(node.url) } : {},
+    ...node.modified_time || node.modifiedTime ? { modifiedTime: String(node.modified_time ?? node.modifiedTime) } : {}
+  };
+}
+function unwrapData(value) {
+  const root = value;
+  return root.data ?? root;
+}
+function unwrapNode(value) {
+  const data = unwrapData(value);
+  return data.node ?? data.item ?? data;
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isPullableType(type) {
+  return type === "doc" || type === "docx";
+}
+function isPullableWikiNode(node) {
+  return isPullableType(node.objType) || node.nodeType === "shortcut" && isPullableType(node.objType);
+}
+function createDuplicateTracker() {
+  return {
+    remotePaths: /* @__PURE__ */ new Set(),
+    docTokens: /* @__PURE__ */ new Set()
+  };
+}
+function addDocument(documents, warnings, duplicates, document, type) {
+  documents.push(document);
+  if (duplicates.remotePaths.has(document.remotePath)) {
+    warnings.push({
+      message: `Duplicate remote path: ${document.remotePath}`,
+      title: document.title,
+      type,
+      token: document.docToken,
+      remotePath: document.remotePath
+    });
+  } else {
+    duplicates.remotePaths.add(document.remotePath);
+  }
+  if (duplicates.docTokens.has(document.docToken)) {
+    warnings.push({
+      message: `Duplicate document token: ${document.docToken}`,
+      title: document.title,
+      type,
+      token: document.docToken,
+      remotePath: document.remotePath
+    });
+  } else {
+    duplicates.docTokens.add(document.docToken);
+  }
+}
+function toPullDocument(sourceKind, item, remotePath) {
+  return {
+    sourceKind,
+    title: item.title,
+    docToken: item.token,
+    remotePath,
+    ...item.url ? { sourceUrl: item.url } : {},
+    ...item.modifiedTime ? { modifiedTime: item.modifiedTime } : {}
+  };
+}
+function toWikiDocument(node, remotePath) {
+  return {
+    sourceKind: "wiki_node",
+    title: node.title,
+    docToken: node.docToken,
+    wikiNodeToken: node.nodeToken,
+    remotePath,
+    ...node.url ? { sourceUrl: node.url } : {},
+    ...node.modifiedTime ? { modifiedTime: node.modifiedTime } : {}
+  };
+}
+function wikiNodeToWarningItem(node, remotePath) {
+  return {
+    title: node.title,
+    token: node.docToken,
+    type: node.objType || node.nodeType,
+    ...node.url ? { url: node.url } : {},
+    ...remotePath ? { remotePath } : {}
+  };
+}
+function toWarning(item) {
+  return {
+    message: `Skipping non-document item: ${item.title}`,
+    ...item.title ? { title: item.title } : {},
+    ...item.type ? { type: item.type } : {},
+    ...item.token ? { token: item.token } : {},
+    ...item.url ? { url: item.url } : {},
+    ...item.remotePath ? { remotePath: item.remotePath } : {}
+  };
+}
+function joinRemotePath(parent, child) {
+  return parent ? `${parent}/${child}` : child;
+}
+function isUrl(value) {
+  return /^https?:\/\//i.test(value);
+}
+function stringValue2(value) {
+  return value === void 0 || value === null ? "" : String(value);
+}
+function booleanValue(value) {
+  return value === true || value === "true";
+}
+
+// scripts/lib/pull-verify.ts
+var import_yaml2 = __toESM(require_dist(), 1);
+import { access, readFile as readFile4, realpath as realpath2, stat } from "node:fs/promises";
+import { isAbsolute as isAbsolute2, relative as relative3, resolve as resolve5, sep as sep3 } from "node:path";
+import { posix as posix5 } from "node:path";
+async function verifyPullWorkspace(input) {
+  const workspaceRoot = resolve5(input.workspaceRoot);
+  const realWorkspaceRoot = await realpath2(workspaceRoot);
+  const problems = [];
+  const checkedFiles = [];
+  const checkedAssets = /* @__PURE__ */ new Set();
+  const knownStems = knownPulledStems(input.state);
+  const verifyWikiLinks = hasCollectionSource(input.state);
+  for (const document of Object.values(input.state.pull.documents)) {
+    const filePath = safeWorkspacePathProblem(document.localPath, workspaceRoot);
+    checkedFiles.push(filePath.relativePath);
+    if (filePath.problem) {
+      problems.push(filePath.problem);
+      continue;
+    }
+    if (!await pathExists(filePath.absolutePath)) {
+      problems.push(`Missing pulled Markdown file: ${filePath.relativePath}`);
+      continue;
+    }
+    const fileProblem = await assertExistingPathInsideWorkspace(realWorkspaceRoot, filePath);
+    if (fileProblem) {
+      problems.push(fileProblem);
+      continue;
+    }
+    const markdown = await readFile4(filePath.absolutePath, "utf8");
+    problems.push(...verifyFrontmatter(markdown, filePath.relativePath));
+    if (markdown.includes("internal-api-drive-stream.feishu.cn")) {
+      problems.push(`Generated Markdown contains unreplaced Feishu stream URL: ${filePath.relativePath}`);
+    }
+    const assetPaths = referencedAssetPaths(filePath.relativePath, markdown);
+    for (const assetPath of [...document.assetPaths, ...assetPaths]) {
+      const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, assetPath, filePath.relativePath);
+      checkedAssets.add(assetProblem.relativePath);
+      if (assetProblem.problem) {
+        problems.push(assetProblem.problem);
+      }
+    }
+    if (verifyWikiLinks) {
+      for (const link of scanWikiLinks(markdown)) {
+        const stem2 = wikiTargetStem(link.target);
+        if (stem2 && !knownStems.has(stem2)) {
+          problems.push(
+            `Wiki link in pulled collection points outside known pulled documents: ${filePath.relativePath} -> ${link.target}`
+          );
+        }
+      }
+    }
+  }
+  for (const asset of Object.values(input.state.pull.assets)) {
+    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath);
+    checkedAssets.add(assetProblem.relativePath);
+    if (assetProblem.problem) {
+      problems.push(assetProblem.problem);
+    }
+  }
+  return {
+    ok: problems.length === 0,
+    problems,
+    checkedFiles,
+    checkedAssets: [...checkedAssets]
+  };
+}
+function verifyFrontmatter(markdown, localPath) {
+  const problems = [];
+  const frontmatter = parseFrontmatter(markdown, localPath, problems);
+  const gyl = frontmatter?.gyl;
+  if (!isRecord2(gyl)) {
+    for (const field of ["token", "title", "pulled_at"]) {
+      problems.push(`Missing required gyl.${field} frontmatter in pulled Markdown: ${localPath}`);
+    }
+    return problems;
+  }
+  for (const field of ["token", "title", "pulled_at"]) {
+    if (!hasRequiredValue(gyl[field])) {
+      problems.push(`Missing required gyl.${field} frontmatter in pulled Markdown: ${localPath}`);
+    }
+  }
+  return problems;
+}
+function parseFrontmatter(markdown, localPath, problems) {
+  if (!markdown.startsWith("---\n")) {
+    problems.push(`Missing YAML frontmatter in pulled Markdown: ${localPath}`);
+    return void 0;
+  }
+  const end = markdown.indexOf("\n---", 4);
+  if (end === -1) {
+    problems.push(`Missing closing YAML frontmatter marker in pulled Markdown: ${localPath}`);
+    return void 0;
+  }
+  try {
+    const parsed = import_yaml2.default.parse(markdown.slice(4, end));
+    return isRecord2(parsed) ? parsed : void 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    problems.push(`Invalid YAML frontmatter in pulled Markdown: ${localPath}: ${message}`);
+    return void 0;
+  }
+}
+function referencedAssetPaths(documentPath, markdown) {
+  const targets = [
+    ...parseMarkdownAttachments(markdown).map((attachment) => attachment.target),
+    ...parseRegularLocalFileLinks(markdown).map((link) => link.target)
+  ];
+  return targets.map((target) => resolveMarkdownTarget(documentPath, target));
+}
+async function verifyAssetPath(workspaceRoot, realWorkspaceRoot, localPath, ownerDocumentPath) {
+  try {
+    const safePath = safeWorkspacePath2(workspaceRoot, localPath);
+    const missingMessage = ownerDocumentPath ? `Missing local asset referenced by ${ownerDocumentPath}: ${safePath.relativePath}` : `Missing pulled asset file: ${safePath.relativePath}`;
+    if (!await pathExists(safePath.absolutePath)) {
+      return { relativePath: safePath.relativePath, problem: missingMessage };
+    }
+    const problem = await assertExistingPathInsideWorkspace(realWorkspaceRoot, safePath);
+    if (problem) {
+      return { relativePath: safePath.relativePath, problem };
+    }
+    const stats = await stat(safePath.absolutePath);
+    if (!stats.isFile()) {
+      return { relativePath: safePath.relativePath, problem: `Pulled asset path is not a file: ${safePath.relativePath}` };
+    }
+    return { relativePath: safePath.relativePath };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { relativePath: localPath.replace(/\\/g, "/"), problem: message };
+  }
+}
+function safeWorkspacePathProblem(path, workspaceRoot) {
+  try {
+    return safeWorkspacePath2(workspaceRoot, path);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      relativePath: path.replace(/\\/g, "/"),
+      absolutePath: "",
+      problem: message
+    };
+  }
+}
+async function assertExistingPathInsideWorkspace(realWorkspaceRoot, safePath) {
+  const realTarget = await realpath2(safePath.absolutePath);
+  if (!isInsidePath2(realWorkspaceRoot, realTarget)) {
+    return `Path escapes the workspace root: ${safePath.relativePath}`;
+  }
+  return void 0;
+}
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+function scanWikiLinks(markdown) {
+  const source = stripCodeForParsing(markdown);
+  const links = [];
+  for (const match of source.matchAll(/(?<!!)\[\[([^\]\n]+)\]\]/g)) {
+    const target = match[1].split("|", 1)[0].split("#", 1)[0].trim();
+    if (target) {
+      links.push({ target });
+    }
+  }
+  return links;
+}
+function parseRegularLocalFileLinks(markdown) {
+  const source = stripCodeForParsing(markdown);
+  const links = [];
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] === "!" && source[index + 1] === "[") {
+      continue;
+    }
+    if (source[index] !== "[" || source[index - 1] === "!") {
+      continue;
+    }
+    const labelEnd = source.indexOf("]", index + 1);
+    if (labelEnd === -1 || source[labelEnd + 1] !== "(") {
+      continue;
+    }
+    const destinationStart = labelEnd + 2;
+    const destinationEnd = findMarkdownDestinationEnd(source, destinationStart);
+    if (destinationEnd === -1) {
+      continue;
+    }
+    const target = normalizeRegularLinkTarget(source.slice(destinationStart, destinationEnd));
+    if (target && !target.toLowerCase().endsWith(".md")) {
+      links.push({ target });
+    }
+    index = destinationEnd;
+  }
+  return links;
+}
+function normalizeRegularLinkTarget(value) {
+  const trimmed = value.trim();
+  const withoutAngleBrackets = trimmed.startsWith("<") && trimmed.includes(">") ? trimmed.slice(1, trimmed.indexOf(">")) : trimmed;
+  const target = stripMarkdownLinkTitle(withoutAngleBrackets).split("#", 1)[0].trim();
+  if (!target || target.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(target)) {
+    return void 0;
+  }
+  return target;
+}
+function stripMarkdownLinkTitle(destination) {
+  const quotedTitle = destination.match(/^(.+\.[^\s.]+)\s+(?:"[^"]*"|'[^']*')\s*$/);
+  if (quotedTitle) {
+    return quotedTitle[1];
+  }
+  const parenthesizedTitle = destination.match(/^(.+\.[^\s.]+)\s+\([^()]*\)\s*$/);
+  if (parenthesizedTitle) {
+    return parenthesizedTitle[1];
+  }
+  return destination;
+}
+function findMarkdownDestinationEnd(source, start) {
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "\n") {
+      return -1;
+    }
+    if (char === "\\") {
+      index += 1;
+      continue;
+    }
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")") {
+      if (depth === 0) {
+        return index;
+      }
+      depth -= 1;
+    }
+  }
+  return -1;
+}
+function resolveMarkdownTarget(documentPath, target) {
+  const normalizedTarget = target.replace(/\\/g, "/");
+  if (posix5.isAbsolute(normalizedTarget) || /^[A-Za-z]:/.test(normalizedTarget)) {
+    return normalizedTarget;
+  }
+  const documentDir = posix5.dirname(documentPath.replace(/\\/g, "/"));
+  return documentDir === "." ? normalizedTarget : `${documentDir}/${normalizedTarget}`;
+}
+function knownPulledStems(state) {
+  return new Set(Object.values(state.pull.documents).map((document) => stemFromMarkdownPath(document.localPath)));
+}
+function stemFromMarkdownPath(localPath) {
+  const basename3 = posix5.basename(localPath.replace(/\\/g, "/"));
+  return basename3.toLowerCase().endsWith(".md") ? basename3.slice(0, -3) : basename3;
+}
+function wikiTargetStem(target) {
+  return stemFromMarkdownPath(posix5.basename(target.replace(/\\/g, "/")));
+}
+function hasCollectionSource(state) {
+  return Object.values(state.pull.sources).some((source) => source.type === "folder" || source.type === "wiki_node");
+}
+function hasRequiredValue(value) {
+  return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+}
+function safeWorkspacePath2(workspaceRoot, path) {
+  const relativePath = normalizeRelativePath3(path);
+  const absolutePath = resolve5(workspaceRoot, ...relativePath.split("/"));
+  const fromRoot = relative3(workspaceRoot, absolutePath);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep3}`) || isAbsolute2(fromRoot)) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return { relativePath, absolutePath };
+}
+function normalizeRelativePath3(path) {
+  const posixPath = path.replace(/\\/g, "/").trim();
+  if (!posixPath || posixPath === ".") {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  if (posix5.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  const normalized = posix5.normalize(posixPath).replace(/^\.\//, "");
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return normalized;
+}
+function isInsidePath2(root, target) {
+  const fromRoot = relative3(root, target);
+  return fromRoot === "" || !fromRoot.startsWith(`..${sep3}`) && fromRoot !== ".." && !isAbsolute2(fromRoot);
+}
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// scripts/commands/pull.ts
+async function pullPreviewCommand(configPath, dependencies = {}) {
+  const scanPullSource2 = dependencies.scanPullSource ?? scanPullSource;
+  const fetchPullDocument2 = dependencies.fetchPullDocument ?? fetchPullDocument;
+  const loadRootState2 = dependencies.loadRootState ?? loadRootState;
+  const buildPullProposal2 = dependencies.buildPullProposal ?? buildPullProposal;
+  const renderPullProposalMarkdown2 = dependencies.renderPullProposalMarkdown ?? renderPullProposalMarkdown;
+  const now = dependencies.now ?? (() => /* @__PURE__ */ new Date());
+  const resolvedConfigPath = resolve6(configPath);
+  const configDir = dirname7(resolvedConfigPath);
+  const config = parseConfig(await readUtf8(resolvedConfigPath));
+  const pullConfig = requirePullConfig(config);
+  const workspaceRoot = resolve6(configDir, config.workspaceRoot);
+  const scan = await scanPullSource2(pullConfig.source);
+  const fetchedDocuments = /* @__PURE__ */ new Map();
+  for (const document of scan.documents) {
+    fetchedDocuments.set(document.docToken, await fetchPullDocument2(document.docToken));
+  }
+  const state = await loadRootState2(resolve6(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const existingLocalFiles = await collectExistingLocalFileHashes(workspaceRoot, pullConfig.outputDir, config.exclude);
+  const proposal = buildPullProposal2({
+    scan,
+    fetchedDocuments,
+    state,
+    pull: pullConfig,
+    existingLocalFiles,
+    now: now()
+  });
+  const proposalDir = resolve6(workspaceRoot, config.proposalDir);
+  const jsonPath = join6(proposalDir, `${proposal.id}.json`);
+  const markdownPath = join6(proposalDir, `${proposal.id}.md`);
+  await writeJson(jsonPath, proposal);
+  await writeUtf8(markdownPath, renderPullProposalMarkdown2(proposal));
+  console.log(`Wrote pull proposal JSON: ${jsonPath}`);
+  console.log(`Wrote pull proposal Markdown: ${markdownPath}`);
+  return proposal.blockers.length === 0 ? 0 : 2;
+}
+async function pullApplyCommand(proposalPath, configPath, dependencies = {}) {
+  const applyPullProposal2 = dependencies.applyPullProposal ?? applyPullProposal;
+  const result = await applyPullProposal2({ proposalPath, configPath });
+  console.log(JSON.stringify(result, null, 2));
+  if (result.status === "applied") {
+    return 0;
+  }
+  return result.status === "failed" ? 1 : 2;
+}
+async function pullVerifyCommand(configPath, dependencies = {}) {
+  const loadRootState2 = dependencies.loadRootState ?? loadRootState;
+  const verifyPullWorkspace2 = dependencies.verifyPullWorkspace ?? verifyPullWorkspace;
+  const resolvedConfigPath = resolve6(configPath);
+  const configDir = dirname7(resolvedConfigPath);
+  const config = parseConfig(await readUtf8(resolvedConfigPath));
+  requirePullConfig(config);
+  const workspaceRoot = resolve6(configDir, config.workspaceRoot);
+  const state = await loadRootState2(resolve6(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const result = await verifyPullWorkspace2({ workspaceRoot, state });
+  console.log(JSON.stringify(result, null, 2));
+  return result.ok ? 0 : 2;
+}
+async function collectExistingLocalFileHashes(workspaceRoot, outputDir, exclude) {
+  const normalizedOutputDir = normalizeWorkspaceRelativePath(outputDir);
+  const scanRoot = resolve6(workspaceRoot, normalizedOutputDir);
+  const realWorkspaceRoot = await realpath3(workspaceRoot);
+  if (!isInsideWorkspace2(scanRoot, workspaceRoot)) {
+    throw new Error(`Path escapes the workspace root: ${outputDir}`);
+  }
+  try {
+    const rootStat = await stat2(scanRoot);
+    if (!rootStat.isDirectory()) {
+      return /* @__PURE__ */ new Map();
+    }
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return /* @__PURE__ */ new Map();
+    }
+    throw error;
+  }
+  const realScanRoot = await realpath3(scanRoot);
+  if (!isInsideWorkspace2(realScanRoot, realWorkspaceRoot)) {
+    throw new Error(`Path escapes the workspace root: ${outputDir}`);
+  }
+  const ignore = [.../* @__PURE__ */ new Set([...exclude, "node_modules/**", ".git/**", ".git-your-lark/**"])];
+  const paths = await (0, import_fast_glob2.default)("**/*", {
+    cwd: scanRoot,
+    ignore,
+    onlyFiles: true,
+    dot: true,
+    followSymbolicLinks: false
+  });
+  paths.sort();
+  const existingLocalFiles = /* @__PURE__ */ new Map();
+  for (const path of paths) {
+    const absolutePath = resolve6(scanRoot, path);
+    const realFilePath = await realpath3(absolutePath);
+    if (!isInsideWorkspace2(realFilePath, realWorkspaceRoot)) {
+      throw new Error(`Path escapes the workspace root: ${joinRelative2(normalizedOutputDir, path)}`);
+    }
+    const localPath = joinRelative2(normalizedOutputDir, path);
+    existingLocalFiles.set(localPath, sha256Buffer(await readFile5(absolutePath)));
+  }
+  return existingLocalFiles;
+}
+function joinRelative2(...parts) {
+  return normalizeWorkspaceRelativePath(posix6.join(...parts.filter((part) => part !== "")));
+}
+function normalizeWorkspaceRelativePath(path) {
+  const posixPath = path.replace(/\\/g, "/").trim();
+  if (!posixPath || posixPath === ".") {
+    return "";
+  }
+  if (posix6.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
+    throw new Error(`Path must be relative to the workspace root: ${path}`);
+  }
+  const normalized = posix6.normalize(posixPath).replace(/^\.\//, "");
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`Path escapes the workspace root: ${path}`);
+  }
+  return normalized;
+}
+function isInsideWorkspace2(path, workspaceRoot) {
+  const resolvedPath = resolve6(path);
+  const resolvedRoot = resolve6(workspaceRoot);
+  return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep4}`);
+}
+
 // scripts/commands/scan.ts
-import { dirname as dirname5, join as join5, resolve as resolve4 } from "node:path";
+import { dirname as dirname8, join as join7, resolve as resolve7 } from "node:path";
 async function scanCommand(configPath, dependencies = {}) {
   const scanLocalWorkspace2 = dependencies.scanLocalWorkspace ?? scanLocalWorkspace;
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
   const loadState2 = dependencies.loadState ?? loadState;
-  const resolvedConfigPath = resolve4(configPath);
-  const configDir = dirname5(resolvedConfigPath);
+  const resolvedConfigPath = resolve7(configPath);
+  const configDir = dirname8(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
-  const workspaceRoot = resolve4(configDir, config.workspaceRoot);
+  const publishConfig = requirePublishConfig(config);
+  const workspaceRoot = resolve7(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
     include: config.include,
     exclude: config.exclude,
     titleMode: config.titleMode
   });
-  const remote = await scanRemoteFolder2(config.remoteFolderToken);
-  const state = await loadState2(resolve4(workspaceRoot, config.statePath), config.remoteFolderToken);
-  await writeJson(join5(workspaceRoot, ".git-your-lark", "manifest.json"), {
+  const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
+  const state = await loadState2(resolve7(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
+  await writeJson(join7(workspaceRoot, ".git-your-lark", "manifest.json"), {
     local,
     remote,
     state
@@ -22259,7 +24770,7 @@ async function scanCommand(configPath, dependencies = {}) {
 }
 
 // scripts/commands/verify.ts
-import { dirname as dirname6, resolve as resolve5 } from "node:path";
+import { dirname as dirname9, resolve as resolve8 } from "node:path";
 
 // scripts/lib/verify.ts
 function verifyManifest(local, remote) {
@@ -22287,16 +24798,17 @@ function verifyManifest(local, remote) {
 async function verifyCommand(configPath, dependencies = {}) {
   const scanLocalWorkspace2 = dependencies.scanLocalWorkspace ?? scanLocalWorkspace;
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
-  const resolvedConfigPath = resolve5(configPath);
-  const configDir = dirname6(resolvedConfigPath);
+  const resolvedConfigPath = resolve8(configPath);
+  const configDir = dirname9(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
-  const workspaceRoot = resolve5(configDir, config.workspaceRoot);
+  const publishConfig = requirePublishConfig(config);
+  const workspaceRoot = resolve8(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
     include: config.include,
     exclude: config.exclude
   });
-  const remote = await scanRemoteFolder2(config.remoteFolderToken);
+  const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
   const result = verifyManifest(local, remote);
   console.log(JSON.stringify(result, null, 2));
   return result.ok ? 0 : 1;
@@ -22304,17 +24816,20 @@ async function verifyCommand(configPath, dependencies = {}) {
 
 // scripts/gyl.ts
 var program2 = new Command();
-program2.name("gyl").description("Preview-first Markdown workspace publishing to Lark/Feishu.").version("0.2.0");
+program2.name("gyl").description("Preview-first Markdown workspace publishing and importing for Lark/Feishu.").version("0.3.0");
 program2.command("doctor").description("Check lark-cli dependency, auth, and required command availability.").action(async () => {
   process.exitCode = await doctorCommand();
 });
-program2.command("init").description("Create a git-your-lark.yml config file.").option("--remote-folder-token <token>", "Existing target Lark Drive folder token").option("--remote-folder-url <url>", "Existing target Lark Drive folder URL, stored for display only").option("--create-remote-folder", "Create a new target Lark Drive folder for first publish", false).option("--folder-name <name>", "Folder name to create when --create-remote-folder is set").option("--parent-folder-token <token>", "Optional parent folder token for the new remote folder").option("-o, --output <path>", "Config output path", "git-your-lark.yml").option("-w, --workspace-root <path>", "Local workspace root", ".").option("--force", "Overwrite an existing config file", false).action(async (options) => {
+program2.command("init").description("Create a git-your-lark.yml config file.").option("--remote-folder-token <token>", "Existing target Lark Drive folder token").option("--remote-folder-url <url>", "Existing target Lark Drive folder URL, stored for display only").option("--create-remote-folder", "Create a new target Lark Drive folder for first publish", false).option("--folder-name <name>", "Folder name to create when --create-remote-folder is set").option("--parent-folder-token <token>", "Optional parent folder token for the new remote folder").option("--pull-source-type <doc|folder|wiki_node>", "Source type for Lark-to-Obsidian imports").option("--pull-source <url-or-token>", "Source Lark/Feishu URL or token for imports").option("--pull-output-dir <path>", "Local output directory for imported Markdown").option("-o, --output <path>", "Config output path", "git-your-lark.yml").option("-w, --workspace-root <path>", "Local workspace root", ".").option("--force", "Overwrite an existing config file", false).action(async (options) => {
   process.exitCode = await initCommand({
     remoteFolderToken: options.remoteFolderToken,
     remoteFolderUrl: options.remoteFolderUrl,
     createRemoteFolder: options.createRemoteFolder,
     folderName: options.folderName,
     parentFolderToken: options.parentFolderToken,
+    pullSourceType: options.pullSourceType,
+    pullSourceTokenOrUrl: options.pullSource,
+    pullOutputDir: options.pullOutputDir,
     outputPath: options.output,
     workspaceRoot: options.workspaceRoot,
     force: options.force
@@ -22337,5 +24852,15 @@ program2.command("merge <proposal>").requiredOption("-c, --config <path>", "Path
 });
 program2.command("verify").requiredOption("-c, --config <path>", "Path to git-your-lark.yml").description("Verify local Markdown titles against remote Lark docx state.").action(async (options) => {
   process.exitCode = await verifyCommand(options.config);
+});
+var pull = program2.command("pull").description("Preview and apply Lark-to-Obsidian imports.");
+pull.command("preview").requiredOption("-c, --config <path>", "Path to git-your-lark.yml").description("Create a reviewable Lark-to-Obsidian import preview.").action(async (options) => {
+  process.exitCode = await pullPreviewCommand(options.config);
+});
+pull.command("apply <proposal>").requiredOption("-c, --config <path>", "Path to git-your-lark.yml").description("Apply a reviewed Lark-to-Obsidian import preview.").action(async (proposal, options) => {
+  process.exitCode = await pullApplyCommand(proposal, options.config);
+});
+pull.command("verify").requiredOption("-c, --config <path>", "Path to git-your-lark.yml").description("Verify pulled local Markdown files and assets.").action(async (options) => {
+  process.exitCode = await pullVerifyCommand(options.config);
 });
 await program2.parseAsync(process.argv);

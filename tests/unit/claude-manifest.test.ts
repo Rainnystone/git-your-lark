@@ -18,7 +18,7 @@ afterEach(() => {
 function writePlugin(extra: Record<string, unknown> = {}) {
   writeFileSync(
     join(root, ".claude-plugin", "plugin.json"),
-    JSON.stringify({ name: "git-your-lark", description: "d", version: "0.2.0", ...extra })
+    JSON.stringify({ name: "git-your-lark", description: "d", version: "0.3.0", ...extra })
   );
 }
 

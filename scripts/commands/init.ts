@@ -4,9 +4,12 @@ import { writeUtf8 } from "../lib/fs-utils.js";
 import { extractJson, runCommand, type CommandResult } from "../lib/lark-cli.js";
 
 export interface InitConfigInput {
-  remoteFolderToken: string;
+  remoteFolderToken?: string;
   remoteFolderUrl?: string;
   workspaceRoot: string;
+  pullSourceType?: "doc" | "folder" | "wiki_node";
+  pullSourceTokenOrUrl?: string;
+  pullOutputDir?: string;
 }
 
 export interface CreateFolderInput {
@@ -26,6 +29,9 @@ export interface InitCommandOptions {
   folderName?: string;
   parentFolderToken?: string;
   workspaceRoot?: string;
+  pullSourceType?: "doc" | "folder" | "wiki_node";
+  pullSourceTokenOrUrl?: string;
+  pullOutputDir?: string;
   outputPath?: string;
   force?: boolean;
   run?: (command: string, args: string[], cwd?: string) => Promise<CommandResult>;
@@ -36,10 +42,19 @@ function yamlString(value: string): string {
 }
 
 export function renderInitConfig(input: InitConfigInput): string {
+  const hasPublishConfig = Boolean(input.remoteFolderToken?.trim());
+  const hasPullConfig = Boolean(input.pullSourceType && input.pullSourceTokenOrUrl?.trim());
   const lines = [
     `workspaceRoot: ${yamlString(input.workspaceRoot)}`,
-    `remoteFolderToken: ${yamlString(input.remoteFolderToken)}`,
-    ...(input.remoteFolderUrl ? [`remoteFolderUrl: ${yamlString(input.remoteFolderUrl)}`] : []),
+    ...(hasPublishConfig ? [`remoteFolderToken: ${yamlString(input.remoteFolderToken!)}`] : []),
+    ...(hasPublishConfig && input.remoteFolderUrl ? [`remoteFolderUrl: ${yamlString(input.remoteFolderUrl)}`] : []),
+    ...(hasPullConfig ? [
+      "pull:",
+      "  source:",
+      `    type: ${yamlString(input.pullSourceType!)}`,
+      `    tokenOrUrl: ${yamlString(input.pullSourceTokenOrUrl!)}`,
+      `  outputDir: ${yamlString(input.pullOutputDir ?? ".")}`
+    ] : []),
     "include:",
     '  - "**/*.md"',
     "exclude:",
@@ -60,8 +75,17 @@ export function renderInitConfig(input: InitConfigInput): string {
 
   ConfigSchema.parse({
     workspaceRoot: input.workspaceRoot,
-    remoteFolderToken: input.remoteFolderToken,
-    ...(input.remoteFolderUrl ? { remoteFolderUrl: input.remoteFolderUrl } : {})
+    ...(hasPublishConfig ? { remoteFolderToken: input.remoteFolderToken } : {}),
+    ...(hasPublishConfig && input.remoteFolderUrl ? { remoteFolderUrl: input.remoteFolderUrl } : {}),
+    ...(hasPullConfig ? {
+      pull: {
+        source: {
+          type: input.pullSourceType,
+          tokenOrUrl: input.pullSourceTokenOrUrl
+        },
+        outputDir: input.pullOutputDir ?? "."
+      }
+    } : {})
   });
 
   return lines.join("\n");
@@ -142,22 +166,46 @@ export async function initCommand(options: InitCommandOptions): Promise<number> 
   const outputPath = options.outputPath ?? "git-your-lark.yml";
   const workspaceRoot = options.workspaceRoot ?? ".";
   const force = options.force ?? false;
+  const hasPullIntent = Boolean(options.pullSourceType || options.pullSourceTokenOrUrl || options.pullOutputDir);
+  const hasPublishIntent = Boolean(
+    options.remoteFolderToken?.trim()
+    || options.remoteFolderUrl?.trim()
+    || options.createRemoteFolder
+    || options.folderName?.trim()
+    || options.parentFolderToken?.trim()
+  );
 
   if (existsSync(outputPath) && !force) {
     console.error(`${outputPath} already exists. Pass --force to overwrite it.`);
     return 1;
   }
 
-  const remote = await resolveRemoteFolder({
-    ...options,
-    createRemoteFolder: options.createRemoteFolder ?? false
-  });
-  if (!remote) return 1;
+  if (hasPullIntent && !options.pullSourceType) {
+    console.error("Missing --pull-source-type for pull init.");
+    return 1;
+  }
+
+  if (hasPullIntent && !options.pullSourceTokenOrUrl?.trim()) {
+    console.error("Missing --pull-source for pull init.");
+    return 1;
+  }
+
+  const remote = hasPublishIntent || !hasPullIntent
+    ? await resolveRemoteFolder({
+      ...options,
+      createRemoteFolder: options.createRemoteFolder ?? false
+    })
+    : null;
+
+  if ((hasPublishIntent || !hasPullIntent) && !remote) return 1;
 
   await writeUtf8(outputPath, renderInitConfig({
     workspaceRoot,
-    remoteFolderToken: remote.remoteFolderToken,
-    remoteFolderUrl: remote.remoteFolderUrl
+    remoteFolderToken: remote?.remoteFolderToken,
+    remoteFolderUrl: remote?.remoteFolderUrl,
+    pullSourceType: options.pullSourceType,
+    pullSourceTokenOrUrl: options.pullSourceTokenOrUrl?.trim(),
+    pullOutputDir: hasPullIntent ? (options.pullOutputDir ?? ".") : undefined
   }));
   console.log(`Created ${outputPath}`);
   return 0;
