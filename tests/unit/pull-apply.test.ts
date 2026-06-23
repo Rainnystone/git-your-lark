@@ -309,6 +309,12 @@ describe("applyPullProposal", () => {
       ownerDocToken: "doc_theory",
       hash: sha256Text("asset bytes")
     });
+    expect(saved[0].pull.sources["wiki_node:wiki_parent"]).toEqual({
+      type: "wiki_node",
+      tokenOrUrl: "wiki_parent",
+      remoteTitle: "参考资料",
+      lastPulledAt: "2026-06-23T00:00:00.000Z"
+    });
   });
 
   it("renders index Markdown from proposal childDocTokens instead of remotePath prefix inference", async () => {

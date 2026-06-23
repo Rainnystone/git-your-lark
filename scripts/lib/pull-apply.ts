@@ -230,6 +230,13 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
     }
 
     const nextState = nextPullState(state);
+    nextState.pull.sources[pullSourceStateKey(proposal.source.type, proposal.source.tokenOrUrl)] = {
+      type: proposal.source.type,
+      tokenOrUrl: proposal.source.tokenOrUrl,
+      ...(proposal.source.title ? { remoteTitle: proposal.source.title } : {}),
+      lastPulledAt: pulledAt
+    };
+
     for (const asset of proposal.assets) {
       nextState.pull.assets[asset.localPath] = {
         ...(asset.sourceToken ? { sourceToken: asset.sourceToken } : {}),
@@ -673,6 +680,10 @@ function nextPullState(state: GitYourLarkRootState): GitYourLarkRootState {
       assets: { ...state.pull.assets }
     }
   };
+}
+
+function pullSourceStateKey(type: PullProposal["source"]["type"], tokenOrUrl: string): string {
+  return `${type}:${tokenOrUrl}`;
 }
 
 async function currentTextHash(path: string): Promise<string | undefined> {

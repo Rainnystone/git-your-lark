@@ -92,6 +92,27 @@ describe("pull workflow e2e", () => {
         ownerDocToken: "doc_theory",
         localPath: "参考资料/assets/故事块理论文献/story-blocks.png"
       });
+      expect(state.pull.sources["wiki_node:wiki_reference"]).toEqual({
+        type: "wiki_node",
+        tokenOrUrl: "wiki_reference",
+        remoteTitle: "参考资料",
+        lastPulledAt: "2026-06-23T00:01:00.000Z"
+      });
+
+      log.mockClear();
+      await writeFile(
+        join(workspaceRoot, "参考资料", "故事块理论文献.md"),
+        `${pulledDocument}\n[[未知文档]]\n`,
+        "utf8"
+      );
+      const brokenVerifyExit = await pullVerifyCommand(configPath);
+
+      expect(brokenVerifyExit).toBe(2);
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Wiki link in pulled collection points outside known pulled documents: 参考资料/故事块理论文献.md -> 未知文档"
+        )
+      );
       expect(run.mock.calls.map(([, args]) => `${args[0]} ${args[1]}`)).toEqual(
         expect.arrayContaining(["wiki +node-get", "wiki +node-list", "docs +fetch", "docs +media-download"])
       );
