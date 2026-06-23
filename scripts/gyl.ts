@@ -3,6 +3,7 @@ import { applyCommand } from "./commands/apply.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { proposalCommand } from "./commands/proposal.js";
+import { pullApplyCommand, pullPreviewCommand, pullVerifyCommand } from "./commands/pull.js";
 import { scanCommand } from "./commands/scan.js";
 import { verifyCommand } from "./commands/verify.js";
 
@@ -90,6 +91,32 @@ program
   .description("Verify local Markdown titles against remote Lark docx state.")
   .action(async (options) => {
     process.exitCode = await verifyCommand(options.config);
+  });
+
+const pull = program.command("pull").description("Preview and apply Lark-to-Obsidian imports.");
+
+pull
+  .command("preview")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Create a reviewable Lark-to-Obsidian import preview.")
+  .action(async (options) => {
+    process.exitCode = await pullPreviewCommand(options.config);
+  });
+
+pull
+  .command("apply <proposal>")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Apply a reviewed Lark-to-Obsidian import preview.")
+  .action(async (proposal, options) => {
+    process.exitCode = await pullApplyCommand(proposal, options.config);
+  });
+
+pull
+  .command("verify")
+  .requiredOption("-c, --config <path>", "Path to git-your-lark.yml")
+  .description("Verify pulled local Markdown files and assets.")
+  .action(async (options) => {
+    process.exitCode = await pullVerifyCommand(options.config);
   });
 
 await program.parseAsync(process.argv);
