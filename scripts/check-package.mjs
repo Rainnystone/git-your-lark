@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "./lib/dev-spawn.mjs";
 
 const requiredFiles = [
   "package.json",

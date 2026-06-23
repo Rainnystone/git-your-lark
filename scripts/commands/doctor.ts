@@ -52,13 +52,24 @@ export function analyzeDoctor(input: DoctorInput): DoctorResult {
 }
 
 export async function doctorCommand(): Promise<number> {
-  const which = await runCommand("sh", ["-lc", "command -v lark-cli"]);
+  // `which`/`where` equivalent: avoid the POSIX-only `sh -lc "command -v ..."`
+  // so the same command works on Windows, where there is no `sh` on PATH.
+  const isWin = process.platform === "win32";
+  const which = isWin
+    ? await runCommand("where", ["lark-cli"])
+    : await runCommand("sh", ["-lc", "command -v lark-cli"]);
   const version = await runCommand("lark-cli", ["--version"]);
   const auth = await runCommand("lark-cli", ["auth", "status"]);
 
   const requiredCommands: Record<string, boolean> = {};
   for (const command of REQUIRED_LARK_COMMANDS) {
-    const help = await runCommand("sh", ["-lc", `lark-cli ${command} --help >/dev/null 2>&1`]);
+    // Probe each required subcommand directly with `--help`. The previous form
+    // (`sh -lc "lark-cli <cmd> --help >/dev/null 2>&1"`) only redirected output
+    // to silence it; `runCommand` already discards captured stdout/stderr and
+    // reports the exit code, so this is equivalent — and works on Windows,
+    // which has no `sh`. Splitting on spaces is safe here: every entry in
+    // REQUIRED_LARK_COMMANDS is space-separated CLI tokens with no quoting.
+    const help = await runCommand("lark-cli", [...command.split(" "), "--help"]);
     requiredCommands[command] = help.code === 0;
   }
 

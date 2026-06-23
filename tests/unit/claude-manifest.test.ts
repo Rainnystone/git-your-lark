@@ -4,6 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { validateClaudePlugin } from "../../scripts/claude-manifest.mjs";
 
+// Error messages embed the OS-native path (e.g. `...\bin\gyl` on Windows vs
+// `.../bin/gyl` on POSIX). Normalize slashes before substring-checking so the
+// assertions hold on both.
+function normalizeSlashes(value: string): string {
+  return value.replace(/\\/g, "/");
+}
+
 let root: string;
 
 beforeEach(() => {
@@ -42,10 +49,16 @@ describe("validateClaudePlugin (manifests)", () => {
   it("reports missing bin/gyl", () => {
     writePlugin();
     writeMarket();
-    expect(validateClaudePlugin(root).some((e) => e.includes("bin/gyl"))).toBe(true);
+    expect(
+      validateClaudePlugin(root).some((e) => normalizeSlashes(e).includes("bin/gyl"))
+    ).toBe(true);
   });
 
-  it("reports non-executable bin/gyl", () => {
+  // The POSIX exec-bit check in validateClaudePlugin is intentionally skipped
+  // on Windows (fs.statSync().mode exec bits are meaningless there), so this
+  // test — which asserts the validator flags a non-executable file — only
+  // applies on macOS/Linux.
+  it.skipIf(process.platform === "win32")("reports non-executable bin/gyl", () => {
     writePlugin();
     writeMarket();
     mkdirSync(join(root, "bin"), { recursive: true });

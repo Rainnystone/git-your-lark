@@ -1,0 +1,21 @@
+# Enforce LF line endings in the working tree on every platform.
+#
+# git-your-lark records content hashes (sha256) of local Markdown/asset files
+# in `.git-your-lark/state.json` and compares them again during `verify`/
+# `pull verify`. On Windows, git's default `core.autocrlf=true` would check
+# text files out as CRLF, so the on-disk bytes (and their hash) would differ
+# from the LF bytes stored/committed on macOS, producing spurious "remote
+# content changed" drift. Pinning `eol=lf` keeps the on-disk content identical
+# across macOS, Linux, and Windows and eliminates the hash drift. This is a
+# no-op on macOS/Linux, where text files already use LF.
+* text=auto eol=lf
+
+# Treat binary assets as binary so git never attempts line-ending conversion
+# or diffing on them (matters for the `assets/` images bundled with docs and
+# fixtures).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary

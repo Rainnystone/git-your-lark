@@ -10,6 +10,7 @@ import {
 import type { PullFetchedDocument } from "../../scripts/lib/pull-fetch.js";
 import type { PullProposal } from "../../scripts/lib/pull-proposal.js";
 import type { PullScanResult } from "../../scripts/lib/pull-types.js";
+import { canCreateSymlink } from "./helpers/symlink-support.js";
 import type { GitYourLarkRootState } from "../../scripts/lib/state.js";
 
 describe("pullPreviewCommand", () => {
@@ -89,7 +90,7 @@ describe("pullPreviewCommand", () => {
     }
   });
 
-  it("rejects a pull outputDir symlink that resolves outside the workspace before scanning local files", async () => {
+  it.skipIf(!canCreateSymlink())("rejects a pull outputDir symlink that resolves outside the workspace before scanning local files", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-command-symlink-output-"));
     const externalRoot = await mkdtemp(join(tmpdir(), "gyl-pull-command-external-output-"));
     const linkedOutputDir = join(workspaceRoot, "linked-output");

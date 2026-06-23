@@ -1,4 +1,5 @@
 import type { PullRemoteDocument, PullRemoteIndex } from "./pull-types.js";
+import { splitMarkdownLines } from "./fs-utils.js";
 
 export interface PullLinkTarget {
   stem: string;
@@ -211,7 +212,7 @@ function transformMarkdownOutsideCode(markdown: string, transformText: (text: st
   let fence: Fence | undefined;
   let result = "";
 
-  for (const line of splitLines(markdown)) {
+  for (const line of splitMarkdownLines(markdown)) {
     if (fence) {
       result += line;
       if (isClosingFence(line, fence)) {
@@ -375,14 +376,6 @@ function firstAttribute(attributes: Record<string, string>, names: string[]): st
     }
   }
   return undefined;
-}
-
-function splitLines(markdown: string): string[] {
-  const lines = markdown.match(/[^\n]*(?:\n|$)/g) ?? [];
-  if (lines.at(-1) === "") {
-    lines.pop();
-  }
-  return lines;
 }
 
 function isClosingFence(line: string, fence: Fence): boolean {

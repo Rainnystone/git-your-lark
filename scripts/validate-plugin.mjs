@@ -2,7 +2,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, resolvePython } from "./lib/dev-spawn.mjs";
 import { validateClaudePlugin } from "./claude-manifest.mjs";
 
 // Claude Code plugin validation (runs independently of Codex tooling).
@@ -37,7 +37,18 @@ if (!existsSync(validatorPath)) {
   process.exit(1);
 }
 
-const result = spawnSync("python3", [validatorPath, "."], {
+const python = resolvePython();
+if (!python) {
+  console.error(
+    [
+      "Codex plugin validator requires Python 3, but no interpreter was found on PATH.",
+      "Install Python 3 (on Windows use `python` or the `py` launcher), then rerun npm run validate:plugin."
+    ].join("\n")
+  );
+  process.exit(1);
+}
+
+const result = spawnSync(python, [validatorPath, "."], {
   stdio: "inherit"
 });
 

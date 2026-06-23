@@ -1,6 +1,8 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+const IS_WIN = process.platform === "win32";
+
 const REQUIRED_PLUGIN_FIELDS = ["name", "description", "version"];
 const REQUIRED_MARKETPLACE_FIELDS = ["name", "owner", "plugins"];
 
@@ -58,7 +60,12 @@ export function validateClaudePlugin(rootDir) {
   const binGylPath = join(rootDir, "bin", "gyl");
   if (!existsSync(binGylPath)) {
     errors.push(`missing ${binGylPath}`);
-  } else {
+  } else if (!IS_WIN) {
+    // The POSIX executable-bit check is meaningless on Windows: Node synthesizes
+    // `fs.statSync().mode` and the owner-exec bit (`0o100`) is typically unset,
+    // so this check would always report "not executable" there. The bundled
+    // `bin/gyl` is invoked via the npm `.cmd` shim (see package.json "bin"),
+    // which does not rely on the exec bit, so skipping on Windows is safe.
     const mode = statSync(binGylPath).mode & 0o777;
     if (!(mode & 0o111)) {
       errors.push(`${binGylPath} is not executable (run: npm run build:bundle)`);

@@ -34,7 +34,12 @@ function commandResult(result: Partial<CommandResult>): CommandResult {
 }
 
 function runGyl(args: string[]) {
-  return spawnSync(process.execPath, ["./node_modules/.bin/tsx", "scripts/gyl.ts", ...args], {
+  // `node --import tsx` loads tsx as an ESM loader and runs the TS source
+  // directly, without going through a bin shim. This avoids resolving
+  // `./node_modules/.bin/tsx` (which is `tsx.cmd` on Windows and does not
+  // work as a positional node argument) and works identically on every
+  // platform. Requires tsx >= 4.19 (we depend on ^4.19.2).
+  return spawnSync(process.execPath, ["--import", "tsx", "scripts/gyl.ts", ...args], {
     cwd: process.cwd(),
     encoding: "utf8"
   });
