@@ -52,6 +52,17 @@ skill 会接手剩下的流程：
 
 分享权限仍然在飞书里处理。这个工具只负责把文档同步正确，并把链接给你。
 
+## 两个方向，同一个习惯：先预览
+
+Git Your Lark 现在支持团队文档最常见的两个方向：
+
+| 方向 | 什么时候用 | 它保护什么 |
+| --- | --- | --- |
+| 发布：本地 Markdown -> 飞书文档 | 你在 Markdown 或 Obsidian 里写，团队在飞书里读。 | Markdown 会变成真正的飞书 docx 文档，文档之间的引用会转换成飞书文档链接。 |
+| 拉取：飞书文档 -> 本地 Markdown | 一个飞书 doc、云盘文件夹或 wiki 节点需要进入本地 Obsidian vault 或 docs 文件夹。 | 如果链接目标也在同一次拉取范围内，飞书文档链接会变成 Obsidian wiki link；图片和附件会落到本地。 |
+
+两个方向都遵守同一个习惯：先生成可以审阅的预览，再写入。发布时不会静默覆盖远端改动。拉取时不会静默覆盖本地编辑，不会把飞书临时图片链接留在 Markdown 里，并且会用记录下来的 hash 验证本地 Markdown 和素材文件。
+
 ## 可以这样问 agent
 
 下面这些说法很普通，但对 agent 很有用。它们能更准确地把需求指向这个 repo。
@@ -102,7 +113,7 @@ v1 的范围故意收得比较窄。
 - Claude Code plugin 支持（marketplace 安装）
 - `gyl` CLI 的打包检查
 
-它已经可以作为本地工具使用，也可以准备上传 GitHub。Claude Code 用户可以直接从 plugin marketplace 安装；Codex 和 npm 的工作流也继续支持。
+它已经可以作为本地工具使用。Claude Code 用户可以直接从 plugin marketplace 安装；Codex 和 npm 的工作流也继续支持。
 
 ## 依赖
 
@@ -225,6 +236,8 @@ gyl pull apply .git-your-lark/proposals/<proposal-id>.json -c git-your-lark.yml
 ```bash
 gyl pull verify -c git-your-lark.yml
 ```
+
+pull 流程是保守的。如果某个本地文件在上次拉取后被改过，Git Your Lark 会停下来，让你先看冲突。如果同一个飞书文档后来被映射到新的本地路径，状态记录会更新到新路径，旧路径不会继续被当成当前导入结果。
 
 ## 配置说明
 

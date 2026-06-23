@@ -50,6 +50,17 @@ The skill then does the routine work:
 
 Sharing permissions stay in Lark. This tool gives you the folder and document links; you decide who can read them.
 
+## Two directions, one preview-first habit
+
+Git Your Lark now supports both common documentation directions:
+
+| Direction | Use it when | What it protects |
+| --- | --- | --- |
+| Publish: local Markdown -> Lark Docs | You write in Markdown or Obsidian and the team reads in Lark. | Markdown becomes real Lark docx documents, with cross-document references converted into Lark document links. |
+| Pull: Lark Docs -> local Markdown | A Lark doc, Drive folder, or wiki node should become local Markdown in an Obsidian vault or docs folder. | Lark document links become Obsidian wiki links when the target is part of the same pull set; images and files are saved locally. |
+
+Both directions create a reviewable preview before writing. Publish does not silently overwrite remote changes. Pull does not silently overwrite local edits, does not keep temporary Feishu stream URLs, and verifies saved Markdown and assets against recorded hashes.
+
 ## Good ways to ask an agent
 
 These phrases are intentionally plain. They also help AI agents understand when this repo is the right tool.
@@ -87,7 +98,7 @@ Git Your Lark v1 is deliberately narrow.
 
 ## Current status
 
-This repository contains the first working v1 implementation. The core flow is implemented and tested:
+This repository contains the working v1 implementation. The core flow is implemented and tested:
 
 - local Markdown scan
 - remote Lark folder scan
@@ -100,7 +111,7 @@ This repository contains the first working v1 implementation. The core flow is i
 - Claude Code plugin support (marketplace install)
 - package validation for the `gyl` CLI
 
-The project is ready for local use and GitHub publishing. Claude Code users can install it directly from the plugin marketplace; Codex and npm-based workflows are also supported.
+The project is ready for local use. Claude Code users can install it directly from the plugin marketplace; Codex and npm-based workflows are also supported.
 
 ## Requirements
 
@@ -223,6 +234,8 @@ Verify the imported Markdown and assets:
 ```bash
 gyl pull verify -c git-your-lark.yml
 ```
+
+Pull is intentionally conservative. If a local file has changed since the last pull, Git Your Lark stops and asks you to review the conflict. If the same Lark document moves to a different local path, the saved pull state is updated so old paths are not treated as current imports.
 
 ## Config notes
 
