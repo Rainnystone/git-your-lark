@@ -30,6 +30,50 @@ describe("planPullPaths", () => {
     ]);
   });
 
+  it("preserves scanned index child document tokens in planned index files", () => {
+    const proposal = buildPullProposal({
+      scan: {
+        source: { type: "wiki_node", tokenOrUrl: "wiki_parent", title: "参考资料" },
+        indexes: [
+          {
+            title: "参考资料",
+            docToken: "doc_parent",
+            wikiNodeToken: "wiki_parent",
+            remotePath: "参考资料",
+            childDocTokens: ["doc_direct"]
+          }
+        ],
+        documents: [
+          remoteDocument({
+            title: "直接文档",
+            docToken: "doc_direct",
+            wikiNodeToken: "wiki_direct",
+            remotePath: "参考资料/直接文档"
+          }),
+          remoteDocument({
+            title: "嵌套文档",
+            docToken: "doc_nested",
+            wikiNodeToken: "wiki_nested",
+            remotePath: "参考资料/子目录/嵌套文档"
+          })
+        ],
+        warnings: []
+      },
+      fetchedDocuments: fetchedDocuments([
+        fetchedDocument({ docToken: "doc_direct", title: "直接文档" }),
+        fetchedDocument({ docToken: "doc_nested", title: "嵌套文档" })
+      ]),
+      pull: { outputDir: ".", namingRules: [] },
+      state: rootState(),
+      now: new Date("2026-06-22T00:00:00.000Z")
+    });
+
+    expect(proposal.files[0]).toMatchObject({
+      kind: "index",
+      childDocTokens: ["doc_direct"]
+    });
+  });
+
   it("creates collection roots from the selected source title under outputDir", () => {
     const paths = planPullPaths({
       scan: wikiScan(),

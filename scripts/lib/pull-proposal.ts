@@ -32,6 +32,7 @@ export interface PullPlannedFile {
   wikiNodeToken?: string;
   sourceUrl?: string;
   remotePath: string;
+  childDocTokens?: string[];
   localPath: string;
   expectedRevisionId?: string;
   expectedLocalHash?: string;
@@ -313,6 +314,7 @@ function indexToPlannedFile(index: PullRemoteIndex, localPath: string): PullPlan
     ...(index.wikiNodeToken ? { wikiNodeToken: index.wikiNodeToken } : {}),
     ...(index.sourceUrl ? { sourceUrl: index.sourceUrl } : {}),
     remotePath: index.remotePath,
+    childDocTokens: [...index.childDocTokens],
     localPath
   };
 }
