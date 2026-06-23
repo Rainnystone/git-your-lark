@@ -1,0 +1,50 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ubuntu stands in for the macOS dev environment (both are POSIX +
+        # LF-native, and the code has no macOS-specific behavior); Windows is
+        # the platform we are hardening against. Keeping both green prevents
+        # either side from regressing.
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build (tsc)
+        run: npm run build
+
+      - name: Build bundle (esbuild)
+        run: npm run build:bundle
+
+      - name: Verify package contents
+        run: npm run check:package

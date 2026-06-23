@@ -9,6 +9,7 @@ import type { CommandResult } from "../../scripts/lib/lark-cli.js";
 import { buildPullLinkIndex, type PullProposal } from "../../scripts/lib/pull-proposal.js";
 import { renderPullIndexMarkdown, renderPullMarkdown } from "../../scripts/lib/pull-render.js";
 import type { GitYourLarkRootState, PullAssetState, PullDocumentState } from "../../scripts/lib/state.js";
+import { canCreateSymlink } from "./helpers/symlink-support.js";
 
 type ApplyRun = NonNullable<ApplyPullOptions["run"]>;
 
@@ -216,7 +217,7 @@ describe("applyPullProposal", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("rejects a planned file under a symlinked workspace directory that resolves outside the workspace", async () => {
+  it.skipIf(!canCreateSymlink())("rejects a planned file under a symlinked workspace directory that resolves outside the workspace", async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-symlink-workspace-"));
     const externalRoot = await mkdtemp(join(tmpdir(), "gyl-pull-apply-external-"));
     const linkedDir = join(workspaceRoot, "linked-dir");

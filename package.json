@@ -30,12 +30,14 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
+    "cross-spawn": "^7.0.6",
     "diff": "^5.2.0",
     "fast-glob": "^3.3.2",
     "yaml": "^2.5.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
     "@types/node": "^22.10.2",
     "esbuild": "^0.28.1",
     "tsx": "^4.19.2",

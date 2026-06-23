@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildCreateFolderArgs, extractCreatedFolder, initCommand, renderInitConfig } from "../../scripts/commands/init.js";
+import { buildCreateFolderArgs, extractCreatedFolder, initCommand, renderInitConfig, renderWorkspaceGitattributes, writeWorkspaceGitattributes } from "../../scripts/commands/init.js";
 import { parseConfig } from "../../scripts/lib/config.js";
 import type { CommandResult } from "../../scripts/lib/lark-cli.js";
 
@@ -34,7 +34,12 @@ function commandResult(result: Partial<CommandResult>): CommandResult {
 }
 
 function runGyl(args: string[]) {
-  return spawnSync(process.execPath, ["./node_modules/.bin/tsx", "scripts/gyl.ts", ...args], {
+  // `node --import tsx` loads tsx as an ESM loader and runs the TS source
+  // directly, without going through a bin shim. This avoids resolving
+  // `./node_modules/.bin/tsx` (which is `tsx.cmd` on Windows and does not
+  // work as a positional node argument) and works identically on every
+  // platform. Requires tsx >= 4.19 (we depend on ^4.19.2).
+  return spawnSync(process.execPath, ["--import", "tsx", "scripts/gyl.ts", ...args], {
     cwd: process.cwd(),
     encoding: "utf8"
   });
@@ -279,6 +284,63 @@ describe("renderInitConfig", () => {
       expect(config.pull?.source.type).toBe(type);
       expect(config.pull?.source.tokenOrUrl).toBe(`https://example.feishu.cn/${type}/token`);
       expect(config.pull?.outputDir).toBe("Imported");
+    }
+  });
+});
+
+describe("renderWorkspaceGitattributes", () => {
+  it("enforces LF for text and marks common image types binary", () => {
+    const content = renderWorkspaceGitattributes();
+    expect(content).toContain("* text=auto eol=lf");
+    for (const ext of ["png", "jpg", "jpeg", "gif", "webp", "ico"]) {
+      expect(content).toContain(`*.${ext} binary`);
+    }
+  });
+});
+
+describe("writeWorkspaceGitattributes", () => {
+  it("writes a new .gitattributes into the workspace root and returns its path", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-init-gitattributes-"));
+    try {
+      const written = await writeWorkspaceGitattributes(workspaceRoot);
+      expect(written).toBe(join(workspaceRoot, ".gitattributes"));
+      const content = await readFile(join(workspaceRoot, ".gitattributes"), "utf8");
+      expect(content).toContain("* text=auto eol=lf");
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not overwrite an existing .gitattributes", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-init-gitattributes-existing-"));
+    try {
+      const existing = join(workspaceRoot, ".gitattributes");
+      await writeFile(existing, "* text=auto\n", "utf8");
+
+      const written = await writeWorkspaceGitattributes(workspaceRoot);
+      expect(written).toBeNull();
+      // The user's own content is preserved untouched.
+      expect(await readFile(existing, "utf8")).toBe("* text=auto\n");
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("creates a workspace .gitattributes during init", async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), "gyl-init-gitattributes-cmd-"));
+    const configPath = join(workspaceRoot, "git-your-lark.yml");
+    try {
+      await expect(initCommand({
+        remoteFolderToken: "fld_new",
+        workspaceRoot,
+        outputPath: configPath
+      })).resolves.toBe(0);
+
+      const gitattributesPath = join(workspaceRoot, ".gitattributes");
+      expect(existsSync(gitattributesPath)).toBe(true);
+      expect(await readFile(gitattributesPath, "utf8")).toContain("* text=auto eol=lf");
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
     }
   });
 });

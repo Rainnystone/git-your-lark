@@ -3,6 +3,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { posix } from "node:path";
 import YAML from "yaml";
 import { sha256Buffer, sha256Text } from "./hash.js";
+import { normalizeLineEndings } from "./fs-utils.js";
 import { parseMarkdownAttachments, stripCodeForParsing } from "./markdown-links.js";
 import type { GitYourLarkRootState } from "./state.js";
 
@@ -123,19 +124,20 @@ function verifyFrontmatter(markdown: string, localPath: string): string[] {
 }
 
 function parseFrontmatter(markdown: string, localPath: string, problems: string[]): Record<string, unknown> | undefined {
-  if (!markdown.startsWith("---\n")) {
+  const normalized = normalizeLineEndings(markdown);
+  if (!normalized.startsWith("---\n")) {
     problems.push(`Missing YAML frontmatter in pulled Markdown: ${localPath}`);
     return undefined;
   }
 
-  const end = markdown.indexOf("\n---", 4);
+  const end = normalized.indexOf("\n---", 4);
   if (end === -1) {
     problems.push(`Missing closing YAML frontmatter marker in pulled Markdown: ${localPath}`);
     return undefined;
   }
 
   try {
-    const parsed = YAML.parse(markdown.slice(4, end));
+    const parsed = YAML.parse(normalized.slice(4, end));
     return isRecord(parsed) ? parsed : undefined;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

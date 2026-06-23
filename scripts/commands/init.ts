@@ -1,7 +1,61 @@
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { ConfigSchema } from "../lib/config.js";
 import { writeUtf8 } from "../lib/fs-utils.js";
 import { extractJson, runCommand, type CommandResult } from "../lib/lark-cli.js";
+
+/**
+ * The `.gitattributes` we drop into a user's workspace on `gyl init`.
+ *
+ * gyl records content hashes (sha256) of local Markdown/assets in
+ * `.git-your-lark/state.json` and re-checks them in `verify`/`pull verify`. On
+ * Windows, git's default `core.autocrlf=true` checks text files out as CRLF,
+ * so the on-disk bytes (and their hash) diverge from the LF bytes committed on
+ * macOS, producing spurious "remote content changed" drift. Enforcing LF in the
+ * user's workspace keeps on-disk content identical across platforms and removes
+ * that drift at its source — the gyl source repo's own `.gitattributes` only
+ * protects gyl itself, not the workspaces where state.json lives.
+ *
+ * Exposed for tests; production callers go through {@link writeWorkspaceGitattributes}.
+ */
+export const WORKSPACE_GITATTRIBUTES = [
+  "# Managed by git-your-lark. Enforces LF line endings so content hashes",
+  "# recorded in .git-your-lark/state.json stay stable across Windows/macOS/Linux.",
+  "# Safe to extend with your own rules; remove this file only if you manage",
+  "# line endings another way (e.g. a repo-wide .gitattributes with eol=lf).",
+  "* text=auto eol=lf",
+  "",
+  "# Binary assets: never convert line endings or attempt text diffs.",
+  "*.png binary",
+  "*.jpg binary",
+  "*.jpeg binary",
+  "*.gif binary",
+  "*.webp binary",
+  "*.ico binary",
+  ""
+].join("\n");
+
+export function renderWorkspaceGitattributes(): string {
+  return WORKSPACE_GITATTRIBUTES;
+}
+
+/**
+ * Write the workspace `.gitattributes` next to the state file, unless one
+ * already exists (the user's own rules win — we never clobber). Returns the
+ * path written, or `null` if an existing file was left untouched.
+ *
+ * `workspaceRoot` is the directory the config's `workspaceRoot` resolves to
+ * (where `.git-your-lark/state.json` lives) — that is the tree whose line
+ * endings affect recorded hashes, so that is where the attributes belong.
+ */
+export async function writeWorkspaceGitattributes(workspaceRoot: string): Promise<string | null> {
+  const target = join(workspaceRoot, ".gitattributes");
+  if (existsSync(target)) {
+    return null;
+  }
+  await writeUtf8(target, renderWorkspaceGitattributes());
+  return target;
+}
 
 export interface InitConfigInput {
   remoteFolderToken?: string;
@@ -208,5 +262,22 @@ export async function initCommand(options: InitCommandOptions): Promise<number> 
     pullOutputDir: hasPullIntent ? (options.pullOutputDir ?? ".") : undefined
   }));
   console.log(`Created ${outputPath}`);
+
+  // Drop a workspace `.gitattributes` enforcing LF so content hashes recorded
+  // in state.json stay stable across platforms (esp. under Windows
+  // core.autocrlf=true). Resolved relative to the config's workspaceRoot,
+  // which is the tree state.json lives in. Never overwrites an existing file.
+  try {
+    const written = await writeWorkspaceGitattributes(workspaceRoot);
+    if (written) {
+      console.log(`Created ${written} (LF line-ending policy for stable content hashes)`);
+    }
+  } catch (error) {
+    // A missing .gitattributes is not fatal — hashing still works, it just may
+    // drift under Windows autocrlf. Warn rather than fail init.
+    console.warn(
+      `Could not write workspace .gitattributes: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
   return 0;
 }

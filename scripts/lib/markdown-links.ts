@@ -1,3 +1,5 @@
+import { splitMarkdownLines } from "./fs-utils.js";
+
 export interface MarkdownReference {
   target: string;
   raw: string;
@@ -76,15 +78,11 @@ function isLocalTarget(target: string): boolean {
 }
 
 function stripFencedCode(markdown: string): string {
-  const lines = markdown.match(/[^\n]*(?:\n|$)/g) ?? [];
+  const lines = splitMarkdownLines(markdown);
   let fence: { marker: "`" | "~"; length: number } | undefined;
   let result = "";
 
   for (const line of lines) {
-    if (line === "") {
-      continue;
-    }
-
     if (fence) {
       result += " ".repeat(line.length);
       if (isClosingFence(line, fence)) {

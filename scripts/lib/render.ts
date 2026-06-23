@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { splitMarkdownLines } from "./fs-utils.js";
 
 export interface ReferenceTarget {
   token: string;
@@ -40,7 +41,7 @@ export function renderMarkdownForLark(input: RenderInput): RenderResult {
 
   let fence: Fence | undefined;
   let content = "";
-  for (const line of splitLines(input.markdown)) {
+  for (const line of splitMarkdownLines(input.markdown)) {
     if (fence) {
       content += line;
       if (isClosingFence(line, fence)) {
@@ -337,14 +338,6 @@ function findDestinationEnd(source: string, start: number): number {
 function isClosingFence(line: string, fence: Fence): boolean {
   const marker = fence.marker === "`" ? "`" : "~";
   return new RegExp(`^[ \\t]{0,3}${marker}{${fence.length},}[ \\t]*(?:\\n)?$`).test(line);
-}
-
-function splitLines(markdown: string): string[] {
-  const lines = markdown.match(/[^\n]*(?:\n|$)/g) ?? [];
-  if (lines.at(-1) === "") {
-    lines.pop();
-  }
-  return lines;
 }
 
 function findBacktickRunEnd(source: string, start: number): number {
