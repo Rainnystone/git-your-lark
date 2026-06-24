@@ -25,6 +25,7 @@ const result = await build({
   target: "node20",
   outfile: "bin/gyl",
   banner: { js: bannerJs },
+  preserveSymlinks: true,
   legalComments: "none",
   logLevel: "info"
 });

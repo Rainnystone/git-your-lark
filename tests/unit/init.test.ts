@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -292,6 +292,8 @@ describe("renderWorkspaceGitattributes", () => {
   it("enforces LF for text and marks common image types binary", () => {
     const content = renderWorkspaceGitattributes();
     expect(content).toContain("* text=auto eol=lf");
+    expect(content).toContain("*.cmd text eol=crlf");
+    expect(content).toContain("*.bat text eol=crlf");
     for (const ext of ["png", "jpg", "jpeg", "gif", "webp", "ico"]) {
       expect(content).toContain(`*.${ext} binary`);
     }
@@ -341,6 +343,29 @@ describe("writeWorkspaceGitattributes", () => {
       expect(await readFile(gitattributesPath, "utf8")).toContain("* text=auto eol=lf");
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves a relative workspaceRoot for .gitattributes from the config output directory", async () => {
+    const cwdRoot = join(tempDir, "process-cwd");
+    const configDir = join(tempDir, "config");
+    const configPath = join(configDir, "git-your-lark.yml");
+    const originalCwd = process.cwd();
+    await mkdir(cwdRoot, { recursive: true });
+    await mkdir(configDir, { recursive: true });
+
+    try {
+      process.chdir(cwdRoot);
+      await expect(initCommand({
+        remoteFolderToken: "fld_new",
+        workspaceRoot: "workspace",
+        outputPath: configPath
+      })).resolves.toBe(0);
+
+      expect(existsSync(join(configDir, "workspace", ".gitattributes"))).toBe(true);
+      expect(existsSync(join(cwdRoot, "workspace", ".gitattributes"))).toBe(false);
+    } finally {
+      process.chdir(originalCwd);
     }
   });
 });

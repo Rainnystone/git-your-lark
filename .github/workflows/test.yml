@@ -46,5 +46,8 @@ jobs:
       - name: Build bundle (esbuild)
         run: npm run build:bundle
 
+      - name: Verify bundled CLI artifacts
+        run: npm run check:bundle -- --git-diff
+
       - name: Verify package contents
         run: npm run check:package

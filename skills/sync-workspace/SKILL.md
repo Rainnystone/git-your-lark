@@ -15,6 +15,7 @@ Git Your Lark is agent-led and preview-first. The CLI does the mechanical work, 
 - Before any sync run, run `gyl doctor`.
 - Use bare `gyl` in commands. The `gyl` CLI is provided by the plugin: on Claude Code it ships as `bin/gyl` on PATH; on Codex or a global npm install it comes from the `git-your-lark` package. If `gyl doctor` reports a missing `lark-cli`, stop and tell the user to install `@larksuite/cli`.
 - Inspect doctor output. If auth or required scopes are missing or unclear, stop and show the reported or recommended auth command, or ask the user to authorize before continuing.
+- `gyl init` may create `<workspaceRoot>/.gitattributes` to keep Markdown and state hashes stable across macOS, Linux, and Windows. This is expected and existing `.gitattributes` files are not overwritten.
 
 ## Publish Workflow
 
