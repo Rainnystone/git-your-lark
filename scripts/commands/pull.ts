@@ -1,5 +1,5 @@
-import { readFile, realpath, stat } from "node:fs/promises";
-import { dirname, join, posix, resolve, sep } from "node:path";
+import { readFile, stat } from "node:fs/promises";
+import { dirname, join, posix, resolve } from "node:path";
 import fg from "fast-glob";
 import { parseConfig, requirePullConfig } from "../lib/config.js";
 import { readUtf8, writeJson, writeUtf8 } from "../lib/fs-utils.js";
@@ -16,6 +16,7 @@ import { scanPullSource as defaultScanPullSource } from "../lib/pull-source.js";
 import type { PullScanResult } from "../lib/pull-types.js";
 import { verifyPullWorkspace as defaultVerifyPullWorkspace } from "../lib/pull-verify.js";
 import { loadRootState as defaultLoadRootState, type GitYourLarkRootState } from "../lib/state.js";
+import { WorkspacePaths } from "../lib/workspace-paths.js";
 
 export interface PullPreviewDependencies {
   scanPullSource?: (source: PullScanResult["source"]) => Promise<PullScanResult>;
@@ -55,7 +56,8 @@ export async function pullPreviewCommand(configPath: string, dependencies: PullP
   }
 
   const state = await loadRootState(resolve(workspaceRoot, config.statePath), config.remoteFolderToken);
-  const existingLocalFiles = await collectExistingLocalFileHashes(workspaceRoot, pullConfig.outputDir, config.exclude);
+  const paths = await WorkspacePaths.create(workspaceRoot);
+  const existingLocalFiles = await collectExistingLocalFileHashes(paths, workspaceRoot, pullConfig.outputDir, config.exclude);
   const proposal = buildPullProposal({
     scan,
     fetchedDocuments,
@@ -107,20 +109,27 @@ export async function pullVerifyCommand(configPath: string, dependencies: PullVe
 }
 
 async function collectExistingLocalFileHashes(
+  paths: WorkspacePaths,
   workspaceRoot: string,
   outputDir: string,
   exclude: string[]
 ): Promise<Map<string, string>> {
-  const normalizedOutputDir = normalizeWorkspaceRelativePath(outputDir);
-  const scanRoot = resolve(workspaceRoot, normalizedOutputDir);
-  const realWorkspaceRoot = await realpath(workspaceRoot);
+  const posixOutputDir = outputDir.replace(/\\/g, "/").trim();
+  const isRootItself = !posixOutputDir || posixOutputDir === ".";
 
-  if (!isInsideWorkspace(scanRoot, workspaceRoot)) {
-    throw new Error(`Path escapes the workspace root: ${outputDir}`);
+  let scanRootAbsolute: string;
+  let normalizedOutputDir: string;
+  if (isRootItself) {
+    scanRootAbsolute = workspaceRoot;
+    normalizedOutputDir = "";
+  } else {
+    const safeOutputDir = await paths.safeWorkspacePath(posixOutputDir);
+    scanRootAbsolute = safeOutputDir.absolutePath;
+    normalizedOutputDir = safeOutputDir.relativePath;
   }
 
   try {
-    const rootStat = await stat(scanRoot);
+    const rootStat = await stat(scanRootAbsolute);
     if (!rootStat.isDirectory()) {
       return new Map();
     }
@@ -131,55 +140,21 @@ async function collectExistingLocalFileHashes(
     throw error;
   }
 
-  const realScanRoot = await realpath(scanRoot);
-  if (!isInsideWorkspace(realScanRoot, realWorkspaceRoot)) {
-    throw new Error(`Path escapes the workspace root: ${outputDir}`);
-  }
-
   const ignore = [...new Set([...exclude, "node_modules/**", ".git/**", ".git-your-lark/**"])];
-  const paths = await fg("**/*", {
-    cwd: scanRoot,
+  const discoveredPaths = await fg("**/*", {
+    cwd: scanRootAbsolute,
     ignore,
     onlyFiles: true,
     dot: true,
     followSymbolicLinks: false
   });
-  paths.sort();
+  discoveredPaths.sort();
 
   const existingLocalFiles = new Map<string, string>();
-  for (const path of paths) {
-    const absolutePath = resolve(scanRoot, path);
-    const realFilePath = await realpath(absolutePath);
-    if (!isInsideWorkspace(realFilePath, realWorkspaceRoot)) {
-      throw new Error(`Path escapes the workspace root: ${joinRelative(normalizedOutputDir, path)}`);
-    }
-    const localPath = joinRelative(normalizedOutputDir, path);
-    existingLocalFiles.set(localPath, sha256Buffer(await readFile(absolutePath)));
+  for (const discoveredPath of discoveredPaths) {
+    const localPath = normalizedOutputDir ? posix.join(normalizedOutputDir, discoveredPath) : discoveredPath;
+    const safeFilePath = await paths.safeWorkspacePath(localPath);
+    existingLocalFiles.set(safeFilePath.relativePath, sha256Buffer(await readFile(safeFilePath.absolutePath)));
   }
   return existingLocalFiles;
-}
-
-function joinRelative(...parts: string[]): string {
-  return normalizeWorkspaceRelativePath(posix.join(...parts.filter((part) => part !== "")));
-}
-
-function normalizeWorkspaceRelativePath(path: string): string {
-  const posixPath = path.replace(/\\/g, "/").trim();
-  if (!posixPath || posixPath === ".") {
-    return "";
-  }
-  if (posix.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
-    throw new Error(`Path must be relative to the workspace root: ${path}`);
-  }
-  const normalized = posix.normalize(posixPath).replace(/^\.\//, "");
-  if (normalized === ".." || normalized.startsWith("../")) {
-    throw new Error(`Path escapes the workspace root: ${path}`);
-  }
-  return normalized;
-}
-
-function isInsideWorkspace(path: string, workspaceRoot: string): boolean {
-  const resolvedPath = resolve(path);
-  const resolvedRoot = resolve(workspaceRoot);
-  return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep}`);
 }

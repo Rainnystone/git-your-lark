@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import fg from "fast-glob";
 import { sha256Buffer, sha256Text } from "./hash.js";
 import { parseMarkdownAttachments, parseMarkdownReferences, type MarkdownReference } from "./markdown-links.js";
+import { WorkspacePaths } from "./workspace-paths.js";
 
 export interface LocalScanInput {
   workspaceRoot: string;
@@ -34,6 +35,7 @@ export interface LocalManifest {
 
 export async function scanLocalWorkspace(input: LocalScanInput): Promise<LocalManifest> {
   const workspaceRoot = resolve(input.workspaceRoot);
+  const paths = await WorkspacePaths.create(workspaceRoot);
   const documentPaths = await fg(input.include, {
     cwd: workspaceRoot,
     ignore: input.exclude,
@@ -55,7 +57,8 @@ export async function scanLocalWorkspace(input: LocalScanInput): Promise<LocalMa
     for (const attachment of parseMarkdownAttachments(content)) {
       const absoluteAttachmentPath = resolve(dirname(absoluteDocumentPath), attachment.target);
       const attachmentPath = normalizePath(relative(workspaceRoot, absoluteAttachmentPath));
-      const attachmentHash = isInsideWorkspace(absoluteAttachmentPath, workspaceRoot) ? await hashAttachment(absoluteAttachmentPath) : "missing";
+      const safeAttachment = await paths.safeWorkspacePathIfExists(attachmentPath);
+      const attachmentHash = safeAttachment ? await hashAttachment(safeAttachment.absolutePath) : "missing";
       const localAttachment = {
         path: attachmentPath,
         hash: attachmentHash,
@@ -114,10 +117,4 @@ function stripExtension(path: string): string {
 
 function normalizePath(path: string): string {
   return path.split("\\").join("/");
-}
-
-function isInsideWorkspace(path: string, workspaceRoot: string): boolean {
-  const resolvedPath = resolve(path);
-  const resolvedRoot = resolve(workspaceRoot);
-  return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep}`);
 }
