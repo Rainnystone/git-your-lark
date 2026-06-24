@@ -42,4 +42,15 @@ describe("bin/gyl bundle", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("uses a Windows-safe junction for node_modules links", async () => {
+    // @ts-ignore check-bundle is an ESM script without TypeScript declarations.
+    const bundleCheck = await import("../../scripts/check-bundle.mjs") as {
+      nodeModulesLinkType: (platform: string) => "dir" | "junction";
+    };
+
+    expect(bundleCheck.nodeModulesLinkType("win32")).toBe("junction");
+    expect(bundleCheck.nodeModulesLinkType("darwin")).toBe("dir");
+    expect(bundleCheck.nodeModulesLinkType("linux")).toBe("dir");
+  });
 });

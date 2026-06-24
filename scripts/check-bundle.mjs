@@ -2,18 +2,32 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { spawnSync } from "./lib/dev-spawn.mjs";
 
 const bundleFiles = ["bin/gyl", "bin/gyl.cmd"];
-const gitDiffMode = process.argv.includes("--git-diff");
 
-if (gitDiffMode) {
-  checkGitDiff();
-} else {
-  checkRegeneratedBundle();
+if (isMainModule()) {
+  main();
 }
 
-function checkGitDiff() {
+export function main(argv = process.argv.slice(2)) {
+  if (argv.includes("--git-diff")) {
+    checkGitDiff();
+  } else {
+    checkRegeneratedBundle();
+  }
+}
+
+export function nodeModulesLinkType(platform = process.platform) {
+  return platform === "win32" ? "junction" : "dir";
+}
+
+function isMainModule() {
+  return process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+}
+
+export function checkGitDiff() {
   const result = spawnSync("git", ["diff", "--exit-code", "--", ...bundleFiles], {
     encoding: "utf8"
   });
@@ -33,7 +47,7 @@ function checkGitDiff() {
   console.log("Bundled CLI artifacts are up to date.");
 }
 
-function checkRegeneratedBundle() {
+export function checkRegeneratedBundle() {
   const repoRoot = getRepoRoot();
   const tempRoot = join(tmpdir(), `gyl-bundle-check-${process.pid}-${Date.now()}`);
   try {
@@ -109,7 +123,7 @@ function gitFileList(args, repoRoot) {
 function linkNodeModules(repoRoot, tempRoot) {
   const nodeModules = join(repoRoot, "node_modules");
   if (existsSync(nodeModules)) {
-    symlinkSync(nodeModules, join(tempRoot, "node_modules"), "dir");
+    symlinkSync(nodeModules, join(tempRoot, "node_modules"), nodeModulesLinkType());
   }
 }
 
