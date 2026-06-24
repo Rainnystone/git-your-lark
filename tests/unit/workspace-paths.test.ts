@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,17 +6,21 @@ import { WorkspacePaths } from "../../scripts/lib/workspace-paths.js";
 import { canCreateSymlink } from "./helpers/symlink-support.js";
 
 async function makeWorkspace(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "gyl-workspace-paths-"));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "gyl-workspace-paths-")));
   await mkdir(join(root, "docs", "assets"), { recursive: true });
   await writeFile(join(root, "docs", "note.md"), "# note\n", "utf8");
   await writeFile(join(root, "docs", "assets", "logo.png"), "png-bytes", "utf8");
   return root;
 }
 
+async function makeTempDir(prefix: string): Promise<string> {
+  return realpath(await mkdtemp(join(tmpdir(), prefix)));
+}
+
 describe("WorkspacePaths.create", () => {
   it("resolves the workspace root through symlinks once at construction", async () => {
     const realRoot = await makeWorkspace();
-    const parent = await mkdtemp(join(tmpdir(), "gyl-wp-parent-"));
+    const parent = await makeTempDir("gyl-wp-parent-");
     const linkedRoot = join(parent, "linked-root");
     await symlink(realRoot, linkedRoot, "dir");
 
@@ -86,7 +90,7 @@ describe("WorkspacePaths.safeWorkspacePath (write semantics)", () => {
 
   it.skipIf(!canCreateSymlink())("throws when a symlinked directory resolves outside the workspace", async () => {
     const root = await makeWorkspace();
-    const external = await mkdtemp(join(tmpdir(), "gyl-wp-external-"));
+    const external = await makeTempDir("gyl-wp-external-");
     await symlink(external, join(root, "docs", "linked"), "dir");
     const paths = await WorkspacePaths.create(root);
 
@@ -155,7 +159,7 @@ describe("WorkspacePaths.safeWorkspacePathIfExists (read semantics)", () => {
 
   it.skipIf(!canCreateSymlink())("returns undefined when a symlink resolves outside the workspace", async () => {
     const root = await makeWorkspace();
-    const external = await mkdtemp(join(tmpdir(), "gyl-wp-ext-read-"));
+    const external = await makeTempDir("gyl-wp-ext-read-");
     await writeFile(join(external, "secret.png"), "secret", "utf8");
     await symlink(join(external, "secret.png"), join(root, "docs", "assets", "leak.png"), "file");
     const paths = await WorkspacePaths.create(root);
