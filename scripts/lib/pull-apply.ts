@@ -1,5 +1,5 @@
-import { copyFile, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { posix } from "node:path";
 import { parseConfig, requirePullConfig } from "./config.js";
 import { readJson, readUtf8, writeUtf8 } from "./fs-utils.js";
@@ -21,6 +21,7 @@ import {
   type PullAssetState,
   type PullDocumentState
 } from "./state.js";
+import { WorkspacePaths, type SafePath } from "./workspace-paths.js";
 
 export type CommandRunner = (command: string, args: string[], cwd?: string) => Promise<CommandResult>;
 
@@ -39,15 +40,6 @@ export interface ApplyPullResult {
   problems: string[];
   writtenFiles: string[];
   writtenAssets: string[];
-}
-
-interface SafePath {
-  relativePath: string;
-  absolutePath: string;
-}
-
-interface PathSafetyContext {
-  realWorkspaceRoot: string;
 }
 
 interface StateFileSnapshot {
@@ -110,7 +102,7 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
     }
 
     const workspaceRoot = resolve(dirname(configPath), config.workspaceRoot);
-    const pathSafety = await createPathSafetyContext(workspaceRoot);
+    const paths = await WorkspacePaths.create(workspaceRoot);
     const statePath = resolve(workspaceRoot, config.statePath);
     const state = await loadRootState(statePath, config.remoteFolderToken);
     const safeFiles = new Map<PullPlannedFile, SafePath>();
@@ -119,24 +111,18 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
     const stagedAssets = new Map<PullPlannedAsset, SafePath>();
     const localProblems: string[] = [];
     const applyStartedAt = now();
-    const stagingRoot = safeWorkspacePath(
-      workspaceRoot,
+    const stagingRoot = await paths.safeWorkspacePath(
       posix.join(".git-your-lark", "apply-staging", `${sanitizePathSegment(proposal.id)}-${applyStartedAt.getTime()}`)
     );
-    const backupRoot = safeWorkspacePath(
-      workspaceRoot,
+    const backupRoot = await paths.safeWorkspacePath(
       posix.join(".git-your-lark", "apply-backups", `${sanitizePathSegment(proposal.id)}-${applyStartedAt.getTime()}`)
     );
     cleanupTargets.push(stagingRoot.absolutePath, backupRoot.absolutePath);
-    await assertSafeTargetPath(pathSafety, stagingRoot);
-    await assertSafeTargetPath(pathSafety, backupRoot);
 
     for (const file of proposal.files) {
-      const safePath = safeWorkspacePath(workspaceRoot, file.localPath);
-      await assertSafeTargetPath(pathSafety, safePath);
+      const safePath = await paths.safeWorkspacePath(file.localPath);
       safeFiles.set(file, safePath);
-      const stagedPath = safeWorkspacePath(workspaceRoot, posix.join(stagingRoot.relativePath, safePath.relativePath));
-      await assertSafeTargetPath(pathSafety, stagedPath);
+      const stagedPath = await paths.safeWorkspacePath(posix.join(stagingRoot.relativePath, safePath.relativePath));
       stagedFiles.set(file, stagedPath);
       const problem = await validateFileOverwrite(file, safePath, state);
       if (problem) {
@@ -145,11 +131,9 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
     }
 
     for (const asset of proposal.assets) {
-      const safePath = safeWorkspacePath(workspaceRoot, asset.localPath);
-      await assertSafeTargetPath(pathSafety, safePath);
+      const safePath = await paths.safeWorkspacePath(asset.localPath);
       safeAssets.set(asset, safePath);
-      const stagedPath = safeWorkspacePath(workspaceRoot, posix.join(stagingRoot.relativePath, safePath.relativePath));
-      await assertSafeTargetPath(pathSafety, stagedPath);
+      const stagedPath = await paths.safeWorkspacePath(posix.join(stagingRoot.relativePath, safePath.relativePath));
       stagedAssets.set(asset, stagedPath);
       const problem = await validateAssetOverwrite(asset, safePath, state);
       if (problem) {
@@ -207,7 +191,7 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
 
     for (const asset of proposal.assets) {
       const stagedPath = requireSafePath(stagedAssets, asset);
-      const hash = await downloadAsset(asset, stagedPath, workspaceRoot, pathSafety, run);
+      const hash = await downloadAsset(asset, stagedPath, workspaceRoot, paths, run);
       assetHashes.set(asset.localPath, hash);
     }
 
@@ -273,38 +257,38 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
       };
     }
 
-    const replacements: FinalReplacement[] = [
-      ...proposal.assets.map((asset): FinalReplacement => {
+    const replacements: FinalReplacement[] = await Promise.all([
+      ...proposal.assets.map(async (asset): Promise<FinalReplacement> => {
         const finalPath = requireSafePath(safeAssets, asset);
         return {
           kind: "asset",
           localPath: asset.localPath,
           finalPath,
           stagedPath: requireSafePath(stagedAssets, asset),
-          backupPath: safeWorkspacePath(workspaceRoot, posix.join(backupRoot.relativePath, finalPath.relativePath)),
+          backupPath: await paths.safeWorkspacePath(posix.join(backupRoot.relativePath, finalPath.relativePath)),
           existed: false
         };
       }),
-      ...renderedFiles.map((rendered): FinalReplacement => {
+      ...renderedFiles.map(async (rendered): Promise<FinalReplacement> => {
         const finalPath = requireSafePath(safeFiles, rendered.file);
         return {
           kind: "file",
           localPath: rendered.file.localPath,
           finalPath,
           stagedPath: requireSafePath(stagedFiles, rendered.file),
-          backupPath: safeWorkspacePath(workspaceRoot, posix.join(backupRoot.relativePath, finalPath.relativePath)),
+          backupPath: await paths.safeWorkspacePath(posix.join(backupRoot.relativePath, finalPath.relativePath)),
           existed: false
         };
       })
-    ];
+    ]);
 
     let stateSnapshot: StateFileSnapshot | undefined;
     let stateSaveStarted = false;
     try {
       stateSnapshot = await snapshotStateFile(statePath);
-      await backupFinalPaths(replacements, pathSafety);
+      await backupFinalPaths(replacements, paths);
       for (const replacement of replacements) {
-        await replaceFromStaging(replacement, pathSafety);
+        await replaceFromStaging(replacement, paths);
         if (replacement.kind === "asset") {
           writtenAssets.push(replacement.localPath);
         } else {
@@ -318,7 +302,7 @@ export async function applyPullProposal(options: ApplyPullOptions): Promise<Appl
       if (stateSaveStarted && stateSnapshot) {
         problems.push(...await restoreStateFile(statePath, stateSnapshot));
       }
-      problems.push(...await rollbackFinalPaths(replacements, pathSafety));
+      problems.push(...await rollbackFinalPaths(replacements, paths));
       return {
         ok: false,
         status: "failed",
@@ -400,11 +384,11 @@ function pruneMovedPullState(
   }
 }
 
-async function backupFinalPaths(replacements: FinalReplacement[], pathSafety: PathSafetyContext): Promise<void> {
+async function backupFinalPaths(replacements: FinalReplacement[], paths: WorkspacePaths): Promise<void> {
   for (const replacement of replacements) {
     try {
-      await assertSafeTargetPath(pathSafety, replacement.finalPath);
-      await assertSafeTargetPath(pathSafety, replacement.backupPath);
+      await paths.safeWorkspacePath(replacement.finalPath.relativePath);
+      await paths.safeWorkspacePath(replacement.backupPath.relativePath);
       await mkdir(dirname(replacement.backupPath.absolutePath), { recursive: true });
       await copyFile(replacement.finalPath.absolutePath, replacement.backupPath.absolutePath);
       replacement.existed = true;
@@ -417,20 +401,20 @@ async function backupFinalPaths(replacements: FinalReplacement[], pathSafety: Pa
   }
 }
 
-async function replaceFromStaging(replacement: FinalReplacement, pathSafety: PathSafetyContext): Promise<void> {
-  await assertSafeTargetPath(pathSafety, replacement.stagedPath);
-  await assertSafeTargetPath(pathSafety, replacement.finalPath);
+async function replaceFromStaging(replacement: FinalReplacement, paths: WorkspacePaths): Promise<void> {
+  await paths.safeWorkspacePath(replacement.stagedPath.relativePath);
+  await paths.safeWorkspacePath(replacement.finalPath.relativePath);
   await mkdir(dirname(replacement.finalPath.absolutePath), { recursive: true });
   await copyFile(replacement.stagedPath.absolutePath, replacement.finalPath.absolutePath);
 }
 
-async function rollbackFinalPaths(replacements: FinalReplacement[], pathSafety: PathSafetyContext): Promise<string[]> {
+async function rollbackFinalPaths(replacements: FinalReplacement[], paths: WorkspacePaths): Promise<string[]> {
   const problems: string[] = [];
   for (const replacement of [...replacements].reverse()) {
     try {
-      await assertSafeTargetPath(pathSafety, replacement.finalPath);
+      await paths.safeWorkspacePath(replacement.finalPath.relativePath);
       if (replacement.existed) {
-        await assertSafeTargetPath(pathSafety, replacement.backupPath);
+        await paths.safeWorkspacePath(replacement.backupPath.relativePath);
         await mkdir(dirname(replacement.finalPath.absolutePath), { recursive: true });
         await copyFile(replacement.backupPath.absolutePath, replacement.finalPath.absolutePath);
       } else {
@@ -595,10 +579,10 @@ async function downloadAsset(
   asset: PullPlannedAsset,
   safePath: SafePath,
   workspaceRoot: string,
-  pathSafety: PathSafetyContext,
+  paths: WorkspacePaths,
   run: CommandRunner
 ): Promise<string> {
-  await assertSafeTargetPath(pathSafety, safePath);
+  await paths.safeWorkspacePath(safePath.relativePath);
   await mkdir(dirname(safePath.absolutePath), { recursive: true });
 
   if (asset.sourceToken) {
@@ -764,53 +748,6 @@ async function currentBufferHash(path: string): Promise<string | undefined> {
 
 async function currentBufferHashOrThrow(path: string): Promise<string> {
   return sha256Buffer(await readFile(path));
-}
-
-function safeWorkspacePath(workspaceRoot: string, path: string): SafePath {
-  const relativePath = normalizeRelativePath(path);
-  const absolutePath = resolve(workspaceRoot, ...relativePath.split("/"));
-  const fromRoot = relative(workspaceRoot, absolutePath);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
-    throw new Error(`Path escapes the workspace root: ${path}`);
-  }
-  return { relativePath, absolutePath };
-}
-
-async function createPathSafetyContext(workspaceRoot: string): Promise<PathSafetyContext> {
-  const resolvedWorkspaceRoot = resolve(workspaceRoot);
-  return {
-    realWorkspaceRoot: await realpath(resolvedWorkspaceRoot)
-  };
-}
-
-async function assertSafeTargetPath(pathSafety: PathSafetyContext, safePath: SafePath): Promise<void> {
-  const realExistingPath = await realExistingAncestor(safePath.absolutePath);
-  if (!isInsidePath(pathSafety.realWorkspaceRoot, realExistingPath)) {
-    throw new Error(`Path escapes the workspace root: ${safePath.relativePath}`);
-  }
-}
-
-async function realExistingAncestor(path: string): Promise<string> {
-  let candidate = path;
-  while (true) {
-    try {
-      return await realpath(candidate);
-    } catch (error) {
-      if (!isEnoent(error)) {
-        throw error;
-      }
-      const parent = dirname(candidate);
-      if (parent === candidate) {
-        throw error;
-      }
-      candidate = parent;
-    }
-  }
-}
-
-function isInsidePath(root: string, target: string): boolean {
-  const fromRoot = relative(root, target);
-  return fromRoot === "" || (!fromRoot.startsWith(`..${sep}`) && fromRoot !== ".." && !isAbsolute(fromRoot));
 }
 
 function normalizeRelativePath(path: string): string {

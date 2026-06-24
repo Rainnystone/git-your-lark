@@ -1,22 +1,18 @@
-import { access, readFile, realpath, stat } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { access, readFile, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { posix } from "node:path";
 import YAML from "yaml";
 import { sha256Buffer, sha256Text } from "./hash.js";
 import { normalizeLineEndings } from "./fs-utils.js";
 import { parseMarkdownAttachments, stripCodeForParsing } from "./markdown-links.js";
 import type { GitYourLarkRootState } from "./state.js";
+import { WorkspacePaths, type SafePath } from "./workspace-paths.js";
 
 export interface PullVerifyResult {
   ok: boolean;
   problems: string[];
   checkedFiles: string[];
   checkedAssets: string[];
-}
-
-interface SafePath {
-  relativePath: string;
-  absolutePath: string;
 }
 
 interface GylFrontmatter {
@@ -30,7 +26,7 @@ export async function verifyPullWorkspace(input: {
   state: GitYourLarkRootState;
 }): Promise<PullVerifyResult> {
   const workspaceRoot = resolve(input.workspaceRoot);
-  const realWorkspaceRoot = await realpath(workspaceRoot);
+  const paths = await WorkspacePaths.create(workspaceRoot);
   const problems: string[] = [];
   const checkedFiles: string[] = [];
   const checkedAssets = new Set<string>();
@@ -38,7 +34,7 @@ export async function verifyPullWorkspace(input: {
   const verifyWikiLinks = hasCollectionSource(input.state);
 
   for (const document of Object.values(input.state.pull.documents)) {
-    const filePath = safeWorkspacePathProblem(document.localPath, workspaceRoot);
+    const filePath = await safeWorkspacePathProblem(paths, document.localPath);
     checkedFiles.push(filePath.relativePath);
     if (filePath.problem) {
       problems.push(filePath.problem);
@@ -47,12 +43,6 @@ export async function verifyPullWorkspace(input: {
 
     if (!(await pathExists(filePath.absolutePath))) {
       problems.push(`Missing pulled Markdown file: ${filePath.relativePath}`);
-      continue;
-    }
-
-    const fileProblem = await assertExistingPathInsideWorkspace(realWorkspaceRoot, filePath);
-    if (fileProblem) {
-      problems.push(fileProblem);
       continue;
     }
 
@@ -68,7 +58,7 @@ export async function verifyPullWorkspace(input: {
 
     const assetPaths = referencedAssetPaths(filePath.relativePath, markdown);
     for (const assetPath of [...document.assetPaths, ...assetPaths]) {
-      const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, assetPath, filePath.relativePath);
+      const assetProblem = await verifyAssetPath(paths, assetPath, filePath.relativePath);
       checkedAssets.add(assetProblem.relativePath);
       if (assetProblem.problem) {
         problems.push(assetProblem.problem);
@@ -88,7 +78,7 @@ export async function verifyPullWorkspace(input: {
   }
 
   for (const asset of Object.values(input.state.pull.assets)) {
-    const assetProblem = await verifyAssetPath(workspaceRoot, realWorkspaceRoot, asset.localPath, undefined, asset.hash);
+    const assetProblem = await verifyAssetPath(paths, asset.localPath, undefined, asset.hash);
     checkedAssets.add(assetProblem.relativePath);
     if (assetProblem.problem) {
       problems.push(assetProblem.problem);
@@ -156,43 +146,40 @@ function referencedAssetPaths(documentPath: string, markdown: string): string[] 
 }
 
 async function verifyAssetPath(
-  workspaceRoot: string,
-  realWorkspaceRoot: string,
+  paths: WorkspacePaths,
   localPath: string,
   ownerDocumentPath?: string,
   expectedHash?: string
 ): Promise<{ relativePath: string; problem?: string }> {
+  let safePath: SafePath;
   try {
-    const safePath = safeWorkspacePath(workspaceRoot, localPath);
-    const missingMessage = ownerDocumentPath
-      ? `Missing local asset referenced by ${ownerDocumentPath}: ${safePath.relativePath}`
-      : `Missing pulled asset file: ${safePath.relativePath}`;
-
-    if (!(await pathExists(safePath.absolutePath))) {
-      return { relativePath: safePath.relativePath, problem: missingMessage };
-    }
-
-    const problem = await assertExistingPathInsideWorkspace(realWorkspaceRoot, safePath);
-    if (problem) {
-      return { relativePath: safePath.relativePath, problem };
-    }
-    const stats = await stat(safePath.absolutePath);
-    if (!stats.isFile()) {
-      return { relativePath: safePath.relativePath, problem: `Pulled asset path is not a file: ${safePath.relativePath}` };
-    }
-    if (expectedHash && sha256Buffer(await readFile(safePath.absolutePath)) !== expectedHash) {
-      return { relativePath: safePath.relativePath, problem: `Pulled asset hash differs from state: ${safePath.relativePath}` };
-    }
-    return { relativePath: safePath.relativePath };
+    safePath = await paths.safeWorkspacePath(localPath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { relativePath: localPath.replace(/\\/g, "/"), problem: message };
   }
+
+  const missingMessage = ownerDocumentPath
+    ? `Missing local asset referenced by ${ownerDocumentPath}: ${safePath.relativePath}`
+    : `Missing pulled asset file: ${safePath.relativePath}`;
+
+  if (!(await pathExists(safePath.absolutePath))) {
+    return { relativePath: safePath.relativePath, problem: missingMessage };
+  }
+
+  const stats = await stat(safePath.absolutePath);
+  if (!stats.isFile()) {
+    return { relativePath: safePath.relativePath, problem: `Pulled asset path is not a file: ${safePath.relativePath}` };
+  }
+  if (expectedHash && sha256Buffer(await readFile(safePath.absolutePath)) !== expectedHash) {
+    return { relativePath: safePath.relativePath, problem: `Pulled asset hash differs from state: ${safePath.relativePath}` };
+  }
+  return { relativePath: safePath.relativePath };
 }
 
-function safeWorkspacePathProblem(path: string, workspaceRoot: string): SafePath & { problem?: string } {
+async function safeWorkspacePathProblem(paths: WorkspacePaths, path: string): Promise<SafePath & { problem?: string }> {
   try {
-    return safeWorkspacePath(workspaceRoot, path);
+    return await paths.safeWorkspacePath(path);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -201,14 +188,6 @@ function safeWorkspacePathProblem(path: string, workspaceRoot: string): SafePath
       problem: message
     };
   }
-}
-
-async function assertExistingPathInsideWorkspace(realWorkspaceRoot: string, safePath: SafePath): Promise<string | undefined> {
-  const realTarget = await realpath(safePath.absolutePath);
-  if (!isInsidePath(realWorkspaceRoot, realTarget)) {
-    return `Path escapes the workspace root: ${safePath.relativePath}`;
-  }
-  return undefined;
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -347,36 +326,6 @@ function hasCollectionSource(state: GitYourLarkRootState): boolean {
 
 function hasRequiredValue(value: unknown): boolean {
   return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
-}
-
-function safeWorkspacePath(workspaceRoot: string, path: string): SafePath {
-  const relativePath = normalizeRelativePath(path);
-  const absolutePath = resolve(workspaceRoot, ...relativePath.split("/"));
-  const fromRoot = relative(workspaceRoot, absolutePath);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
-    throw new Error(`Path escapes the workspace root: ${path}`);
-  }
-  return { relativePath, absolutePath };
-}
-
-function normalizeRelativePath(path: string): string {
-  const posixPath = path.replace(/\\/g, "/").trim();
-  if (!posixPath || posixPath === ".") {
-    throw new Error(`Path must be relative to the workspace root: ${path}`);
-  }
-  if (posix.isAbsolute(posixPath) || /^[A-Za-z]:/.test(posixPath)) {
-    throw new Error(`Path must be relative to the workspace root: ${path}`);
-  }
-  const normalized = posix.normalize(posixPath).replace(/^\.\//, "");
-  if (normalized === ".." || normalized.startsWith("../")) {
-    throw new Error(`Path escapes the workspace root: ${path}`);
-  }
-  return normalized;
-}
-
-function isInsidePath(root: string, target: string): boolean {
-  const fromRoot = relative(root, target);
-  return fromRoot === "" || (!fromRoot.startsWith(`..${sep}`) && fromRoot !== ".." && !isAbsolute(fromRoot));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
