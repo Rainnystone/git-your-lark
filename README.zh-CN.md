@@ -185,6 +185,8 @@ gyl init --remote-folder-token fld_existing
 docs/examples/basic/git-your-lark.yml
 ```
 
+`gyl init` 也可能创建 `<workspaceRoot>/.gitattributes`。它用于让 Markdown 和状态 hash 在 macOS、Linux、Windows 上保持稳定；如果用户已经有 `.gitattributes`，工具不会覆盖。
+
 ## 预览、发布、验证
 
 生成预览：
@@ -322,9 +324,13 @@ README.zh-CN.md
 npm run typecheck
 npm test
 npm run build
+npm run build:bundle
+npm run check:bundle
 npm run validate:plugin
 npm run check:package
 ```
+
+`npm run check:bundle` 会确认提交到 repo 的 Claude Code plugin 启动文件 `bin/gyl` 和 `bin/gyl.cmd` 与重新生成的 bundle 一致。
 
 `npm run check:package` 会跑一次 dry-run 的 `npm pack`，确认构建后的 CLI 和必要 plugin 文件会被打进包里。
 

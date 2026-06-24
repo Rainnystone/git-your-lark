@@ -183,6 +183,8 @@ You can start from the example config:
 docs/examples/basic/git-your-lark.yml
 ```
 
+`gyl init` may also create `<workspaceRoot>/.gitattributes`. This keeps Markdown and state hashes stable across macOS, Linux, and Windows. Existing `.gitattributes` files are never overwritten.
+
 ## Preview, publish, verify
 
 Create a preview:
@@ -320,9 +322,13 @@ Run the checks:
 npm run typecheck
 npm test
 npm run build
+npm run build:bundle
+npm run check:bundle
 npm run validate:plugin
 npm run check:package
 ```
+
+`npm run check:bundle` confirms the committed Claude Code plugin launchers in `bin/gyl` and `bin/gyl.cmd` match the regenerated bundle.
 
 `npm run check:package` runs a dry `npm pack` and confirms that the built CLI and required plugin files are included.
 

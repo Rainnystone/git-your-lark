@@ -10455,12 +10455,12 @@ var require_isexe = __commonJS({
         if (typeof Promise !== "function") {
           throw new TypeError("callback not provided");
         }
-        return new Promise(function(resolve9, reject) {
+        return new Promise(function(resolve10, reject) {
           isexe(path, options || {}, function(er, is) {
             if (er) {
               reject(er);
             } else {
-              resolve9(is);
+              resolve10(is);
             }
           });
         });
@@ -10526,27 +10526,27 @@ var require_which = __commonJS({
         opt = {};
       const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
       const found = [];
-      const step = (i) => new Promise((resolve9, reject) => {
+      const step = (i) => new Promise((resolve10, reject) => {
         if (i === pathEnv.length)
-          return opt.all && found.length ? resolve9(found) : reject(getNotFoundError(cmd));
+          return opt.all && found.length ? resolve10(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
         const pCmd = path.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        resolve9(subStep(p, i, 0));
+        resolve10(subStep(p, i, 0));
       });
-      const subStep = (p, i, ii) => new Promise((resolve9, reject) => {
+      const subStep = (p, i, ii) => new Promise((resolve10, reject) => {
         if (ii === pathExt.length)
-          return resolve9(step(i + 1));
+          return resolve10(step(i + 1));
         const ext = pathExt[ii];
         isexe(p + ext, { pathExt: pathExtExe }, (er, is) => {
           if (!er && is) {
             if (opt.all)
               found.push(p + ext);
             else
-              return resolve9(p + ext);
+              return resolve10(p + ext);
           }
-          return resolve9(subStep(p, i, ii + 1));
+          return resolve10(subStep(p, i, ii + 1));
         });
       });
       return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
@@ -15384,41 +15384,41 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve9, reject) {
+        var p = new Promise(function(resolve10, reject) {
           pushCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve9(result);
+            resolve10(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function unshift(value) {
-        var p = new Promise(function(resolve9, reject) {
+        var p = new Promise(function(resolve10, reject) {
           unshiftCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve9(result);
+            resolve10(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function drained() {
-        var p = new Promise(function(resolve9) {
+        var p = new Promise(function(resolve10) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve9();
+              resolve10();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function") previousDrain();
-                resolve9();
+                resolve10();
                 queue.drain = previousDrain;
               };
             }
@@ -15904,9 +15904,9 @@ var require_stream3 = __commonJS({
         });
       }
       _getStat(filepath) {
-        return new Promise((resolve9, reject) => {
+        return new Promise((resolve10, reject) => {
           this._stat(filepath, this._fsStatSettings, (error, stats) => {
-            return error === null ? resolve9(stats) : reject(error);
+            return error === null ? resolve10(stats) : reject(error);
           });
         });
       }
@@ -15930,10 +15930,10 @@ var require_async5 = __commonJS({
         this._readerStream = new stream_1.default(this._settings);
       }
       dynamic(root, options) {
-        return new Promise((resolve9, reject) => {
+        return new Promise((resolve10, reject) => {
           this._walkAsync(root, options, (error, entries) => {
             if (error === null) {
-              resolve9(entries);
+              resolve10(entries);
             } else {
               reject(error);
             }
@@ -15943,10 +15943,10 @@ var require_async5 = __commonJS({
       async static(patterns, options) {
         const entries = [];
         const stream = this._readerStream.static(patterns, options);
-        return new Promise((resolve9, reject) => {
+        return new Promise((resolve10, reject) => {
           stream.once("error", reject);
           stream.on("data", (entry) => entries.push(entry));
-          stream.once("end", () => resolve9(entries));
+          stream.once("end", () => resolve10(entries));
         });
       }
     };
@@ -20787,14 +20787,14 @@ async function writeUtf8(path, value) {
 // scripts/lib/lark-cli.ts
 var import_cross_spawn = __toESM(require_cross_spawn(), 1);
 function runCommand(command, args, cwd = process.cwd()) {
-  return new Promise((resolve9) => {
+  return new Promise((resolve10) => {
     let settled = false;
     let stdout = "";
     let stderr = "";
     const finish = (result) => {
       if (!settled) {
         settled = true;
-        resolve9(result);
+        resolve10(result);
       }
     };
     const child = (0, import_cross_spawn.default)(command, args, {
@@ -21956,7 +21956,7 @@ function applyJournalPath(proposalPath) {
   return join3(dirname2(proposalPath), `${stem2}.apply-journal.json`);
 }
 function defaultSleep(ms) {
-  return new Promise((resolve9) => setTimeout(resolve9, ms));
+  return new Promise((resolve10) => setTimeout(resolve10, ms));
 }
 async function createPlaceholderDocument(input) {
   const tempDir = await mkdtemp(join3(tmpdir(), "gyl-placeholder-"));
@@ -22331,7 +22331,7 @@ async function doctorCommand() {
 
 // scripts/commands/init.ts
 import { existsSync } from "node:fs";
-import { join as join4 } from "node:path";
+import { dirname as dirname3, join as join4, resolve as resolve2 } from "node:path";
 var WORKSPACE_GITATTRIBUTES = [
   "# Managed by git-your-lark. Enforces LF line endings so content hashes",
   "# recorded in .git-your-lark/state.json stay stable across Windows/macOS/Linux.",
@@ -22346,6 +22346,10 @@ var WORKSPACE_GITATTRIBUTES = [
   "*.gif binary",
   "*.webp binary",
   "*.ico binary",
+  "",
+  "# Windows command scripts: keep CRLF so cmd.exe parses them correctly.",
+  "*.cmd text eol=crlf",
+  "*.bat text eol=crlf",
   ""
 ].join("\n");
 function renderWorkspaceGitattributes() {
@@ -22471,6 +22475,7 @@ async function resolveRemoteFolder(options) {
 }
 async function initCommand(options) {
   const outputPath = options.outputPath ?? "git-your-lark.yml";
+  const configDir = dirname3(resolve2(outputPath));
   const workspaceRoot = options.workspaceRoot ?? ".";
   const force = options.force ?? false;
   const hasPullIntent = Boolean(options.pullSourceType || options.pullSourceTokenOrUrl || options.pullOutputDir);
@@ -22504,7 +22509,7 @@ async function initCommand(options) {
   }));
   console.log(`Created ${outputPath}`);
   try {
-    const written = await writeWorkspaceGitattributes(workspaceRoot);
+    const written = await writeWorkspaceGitattributes(resolve2(configDir, workspaceRoot));
     if (written) {
       console.log(`Created ${written} (LF line-ending policy for stable content hashes)`);
     }
@@ -22517,12 +22522,12 @@ async function initCommand(options) {
 }
 
 // scripts/commands/proposal.ts
-import { dirname as dirname4, join as join6, resolve as resolve3 } from "node:path";
+import { dirname as dirname5, join as join6, resolve as resolve4 } from "node:path";
 
 // scripts/lib/local-scan.ts
 var import_fast_glob = __toESM(require_out4(), 1);
 import { readFile as readFile2 } from "node:fs/promises";
-import { dirname as dirname3, join as join5, relative, resolve as resolve2, sep } from "node:path";
+import { dirname as dirname4, join as join5, relative, resolve as resolve3, sep } from "node:path";
 
 // scripts/lib/hash.ts
 import { createHash } from "node:crypto";
@@ -22688,7 +22693,7 @@ function findDestinationEnd2(source, start) {
 
 // scripts/lib/local-scan.ts
 async function scanLocalWorkspace(input) {
-  const workspaceRoot = resolve2(input.workspaceRoot);
+  const workspaceRoot = resolve3(input.workspaceRoot);
   const documentPaths = await (0, import_fast_glob.default)(input.include, {
     cwd: workspaceRoot,
     ignore: input.exclude,
@@ -22705,7 +22710,7 @@ async function scanLocalWorkspace(input) {
     const references = parseMarkdownReferences(content);
     const documentAttachments = [];
     for (const attachment of parseMarkdownAttachments(content)) {
-      const absoluteAttachmentPath = resolve2(dirname3(absoluteDocumentPath), attachment.target);
+      const absoluteAttachmentPath = resolve3(dirname4(absoluteDocumentPath), attachment.target);
       const attachmentPath = normalizePath2(relative(workspaceRoot, absoluteAttachmentPath));
       const attachmentHash = isInsideWorkspace(absoluteAttachmentPath, workspaceRoot) ? await hashAttachment(absoluteAttachmentPath) : "missing";
       const localAttachment = {
@@ -22761,8 +22766,8 @@ function normalizePath2(path) {
   return path.split("\\").join("/");
 }
 function isInsideWorkspace(path, workspaceRoot) {
-  const resolvedPath = resolve2(path);
-  const resolvedRoot = resolve2(workspaceRoot);
+  const resolvedPath = resolve3(path);
+  const resolvedRoot = resolve3(workspaceRoot);
   return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep}`);
 }
 
@@ -22947,11 +22952,11 @@ async function proposalCommand(configPath, dependencies = {}) {
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
   const loadState2 = dependencies.loadState ?? loadState;
   const now = dependencies.now ?? (() => /* @__PURE__ */ new Date());
-  const resolvedConfigPath = resolve3(configPath);
-  const configDir = dirname4(resolvedConfigPath);
+  const resolvedConfigPath = resolve4(configPath);
+  const configDir = dirname5(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
   const publishConfig = requirePublishConfig(config);
-  const workspaceRoot = resolve3(configDir, config.workspaceRoot);
+  const workspaceRoot = resolve4(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
     include: config.include,
@@ -22959,7 +22964,7 @@ async function proposalCommand(configPath, dependencies = {}) {
     titleMode: config.titleMode
   });
   const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
-  const state = await loadState2(resolve3(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
+  const state = await loadState2(resolve4(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
   const proposal = buildProposal({
     local,
     remote,
@@ -22967,7 +22972,7 @@ async function proposalCommand(configPath, dependencies = {}) {
     attachmentPolicy: config.attachmentPolicy,
     now: now()
   });
-  const proposalDir = resolve3(workspaceRoot, config.proposalDir);
+  const proposalDir = resolve4(workspaceRoot, config.proposalDir);
   const jsonPath = join6(proposalDir, `${proposal.id}.json`);
   const markdownPath = join6(proposalDir, `${proposal.id}.md`);
   await writeJson(jsonPath, proposal);
@@ -22980,11 +22985,11 @@ async function proposalCommand(configPath, dependencies = {}) {
 // scripts/commands/pull.ts
 var import_fast_glob2 = __toESM(require_out4(), 1);
 import { readFile as readFile5, realpath as realpath3, stat as stat2 } from "node:fs/promises";
-import { dirname as dirname7, join as join7, posix as posix6, resolve as resolve6, sep as sep4 } from "node:path";
+import { dirname as dirname8, join as join7, posix as posix6, resolve as resolve7, sep as sep4 } from "node:path";
 
 // scripts/lib/pull-apply.ts
 import { copyFile, mkdir as mkdir2, readFile as readFile3, realpath, rm as rm3, writeFile as writeFile3 } from "node:fs/promises";
-import { dirname as dirname5, isAbsolute, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
+import { dirname as dirname6, isAbsolute, relative as relative2, resolve as resolve5, sep as sep2 } from "node:path";
 import { posix as posix4 } from "node:path";
 
 // scripts/lib/pull-fetch.ts
@@ -23855,8 +23860,8 @@ async function applyPullProposal(options) {
   const writtenAssets = [];
   const cleanupTargets = [];
   try {
-    const configPath = resolve4(options.configPath);
-    const proposalPath = resolve4(options.proposalPath);
+    const configPath = resolve5(options.configPath);
+    const proposalPath = resolve5(options.proposalPath);
     const config = parseConfig(await readUtf8(configPath));
     const pullConfig = requirePullConfig(config);
     const proposal = await readJson(proposalPath);
@@ -23879,9 +23884,9 @@ async function applyPullProposal(options) {
         writtenAssets
       };
     }
-    const workspaceRoot = resolve4(dirname5(configPath), config.workspaceRoot);
+    const workspaceRoot = resolve5(dirname6(configPath), config.workspaceRoot);
     const pathSafety = await createPathSafetyContext(workspaceRoot);
-    const statePath = resolve4(workspaceRoot, config.statePath);
+    const statePath = resolve5(workspaceRoot, config.statePath);
     const state = await loadRootState2(statePath, config.remoteFolderToken);
     const safeFiles = /* @__PURE__ */ new Map();
     const safeAssets = /* @__PURE__ */ new Map();
@@ -24146,7 +24151,7 @@ async function backupFinalPaths(replacements, pathSafety) {
     try {
       await assertSafeTargetPath(pathSafety, replacement.finalPath);
       await assertSafeTargetPath(pathSafety, replacement.backupPath);
-      await mkdir2(dirname5(replacement.backupPath.absolutePath), { recursive: true });
+      await mkdir2(dirname6(replacement.backupPath.absolutePath), { recursive: true });
       await copyFile(replacement.finalPath.absolutePath, replacement.backupPath.absolutePath);
       replacement.existed = true;
     } catch (error) {
@@ -24160,7 +24165,7 @@ async function backupFinalPaths(replacements, pathSafety) {
 async function replaceFromStaging(replacement, pathSafety) {
   await assertSafeTargetPath(pathSafety, replacement.stagedPath);
   await assertSafeTargetPath(pathSafety, replacement.finalPath);
-  await mkdir2(dirname5(replacement.finalPath.absolutePath), { recursive: true });
+  await mkdir2(dirname6(replacement.finalPath.absolutePath), { recursive: true });
   await copyFile(replacement.stagedPath.absolutePath, replacement.finalPath.absolutePath);
 }
 async function rollbackFinalPaths(replacements, pathSafety) {
@@ -24170,7 +24175,7 @@ async function rollbackFinalPaths(replacements, pathSafety) {
       await assertSafeTargetPath(pathSafety, replacement.finalPath);
       if (replacement.existed) {
         await assertSafeTargetPath(pathSafety, replacement.backupPath);
-        await mkdir2(dirname5(replacement.finalPath.absolutePath), { recursive: true });
+        await mkdir2(dirname6(replacement.finalPath.absolutePath), { recursive: true });
         await copyFile(replacement.backupPath.absolutePath, replacement.finalPath.absolutePath);
       } else {
         await rm3(replacement.finalPath.absolutePath, { force: true });
@@ -24196,7 +24201,7 @@ async function snapshotStateFile(path) {
 async function restoreStateFile(path, snapshot) {
   try {
     if (snapshot.existed) {
-      await mkdir2(dirname5(path), { recursive: true });
+      await mkdir2(dirname6(path), { recursive: true });
       await writeFile3(path, snapshot.contents ?? Buffer.alloc(0));
     } else {
       await rm3(path, { force: true });
@@ -24307,7 +24312,7 @@ async function validateAssetOverwrite(asset, safePath, state) {
 }
 async function downloadAsset(asset, safePath, workspaceRoot, pathSafety, run) {
   await assertSafeTargetPath(pathSafety, safePath);
-  await mkdir2(dirname5(safePath.absolutePath), { recursive: true });
+  await mkdir2(dirname6(safePath.absolutePath), { recursive: true });
   if (asset.sourceToken) {
     const result = await run(
       "lark-cli",
@@ -24446,7 +24451,7 @@ async function currentBufferHashOrThrow(path) {
 }
 function safeWorkspacePath(workspaceRoot, path) {
   const relativePath = normalizeRelativePath2(path);
-  const absolutePath = resolve4(workspaceRoot, ...relativePath.split("/"));
+  const absolutePath = resolve5(workspaceRoot, ...relativePath.split("/"));
   const fromRoot = relative2(workspaceRoot, absolutePath);
   if (fromRoot === ".." || fromRoot.startsWith(`..${sep2}`) || isAbsolute(fromRoot)) {
     throw new Error(`Path escapes the workspace root: ${path}`);
@@ -24454,7 +24459,7 @@ function safeWorkspacePath(workspaceRoot, path) {
   return { relativePath, absolutePath };
 }
 async function createPathSafetyContext(workspaceRoot) {
-  const resolvedWorkspaceRoot = resolve4(workspaceRoot);
+  const resolvedWorkspaceRoot = resolve5(workspaceRoot);
   return {
     realWorkspaceRoot: await realpath(resolvedWorkspaceRoot)
   };
@@ -24474,7 +24479,7 @@ async function realExistingAncestor(path) {
       if (!isEnoent(error)) {
         throw error;
       }
-      const parent = dirname5(candidate);
+      const parent = dirname6(candidate);
       if (parent === candidate) {
         throw error;
       }
@@ -24929,10 +24934,10 @@ function booleanValue(value) {
 // scripts/lib/pull-verify.ts
 var import_yaml2 = __toESM(require_dist(), 1);
 import { access, readFile as readFile4, realpath as realpath2, stat } from "node:fs/promises";
-import { isAbsolute as isAbsolute2, relative as relative3, resolve as resolve5, sep as sep3 } from "node:path";
+import { isAbsolute as isAbsolute2, relative as relative3, resolve as resolve6, sep as sep3 } from "node:path";
 import { posix as posix5 } from "node:path";
 async function verifyPullWorkspace(input) {
-  const workspaceRoot = resolve5(input.workspaceRoot);
+  const workspaceRoot = resolve6(input.workspaceRoot);
   const realWorkspaceRoot = await realpath2(workspaceRoot);
   const problems = [];
   const checkedFiles = [];
@@ -25202,7 +25207,7 @@ function hasRequiredValue(value) {
 }
 function safeWorkspacePath2(workspaceRoot, path) {
   const relativePath = normalizeRelativePath3(path);
-  const absolutePath = resolve5(workspaceRoot, ...relativePath.split("/"));
+  const absolutePath = resolve6(workspaceRoot, ...relativePath.split("/"));
   const fromRoot = relative3(workspaceRoot, absolutePath);
   if (fromRoot === ".." || fromRoot.startsWith(`..${sep3}`) || isAbsolute2(fromRoot)) {
     throw new Error(`Path escapes the workspace root: ${path}`);
@@ -25239,17 +25244,17 @@ async function pullPreviewCommand(configPath, dependencies = {}) {
   const buildPullProposal2 = dependencies.buildPullProposal ?? buildPullProposal;
   const renderPullProposalMarkdown2 = dependencies.renderPullProposalMarkdown ?? renderPullProposalMarkdown;
   const now = dependencies.now ?? (() => /* @__PURE__ */ new Date());
-  const resolvedConfigPath = resolve6(configPath);
-  const configDir = dirname7(resolvedConfigPath);
+  const resolvedConfigPath = resolve7(configPath);
+  const configDir = dirname8(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
   const pullConfig = requirePullConfig(config);
-  const workspaceRoot = resolve6(configDir, config.workspaceRoot);
+  const workspaceRoot = resolve7(configDir, config.workspaceRoot);
   const scan = await scanPullSource2(pullConfig.source);
   const fetchedDocuments = /* @__PURE__ */ new Map();
   for (const document of scan.documents) {
     fetchedDocuments.set(document.docToken, await fetchPullDocument2(document.docToken));
   }
-  const state = await loadRootState2(resolve6(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const state = await loadRootState2(resolve7(workspaceRoot, config.statePath), config.remoteFolderToken);
   const existingLocalFiles = await collectExistingLocalFileHashes(workspaceRoot, pullConfig.outputDir, config.exclude);
   const proposal = buildPullProposal2({
     scan,
@@ -25259,7 +25264,7 @@ async function pullPreviewCommand(configPath, dependencies = {}) {
     existingLocalFiles,
     now: now()
   });
-  const proposalDir = resolve6(workspaceRoot, config.proposalDir);
+  const proposalDir = resolve7(workspaceRoot, config.proposalDir);
   const jsonPath = join7(proposalDir, `${proposal.id}.json`);
   const markdownPath = join7(proposalDir, `${proposal.id}.md`);
   await writeJson(jsonPath, proposal);
@@ -25280,19 +25285,19 @@ async function pullApplyCommand(proposalPath, configPath, dependencies = {}) {
 async function pullVerifyCommand(configPath, dependencies = {}) {
   const loadRootState2 = dependencies.loadRootState ?? loadRootState;
   const verifyPullWorkspace2 = dependencies.verifyPullWorkspace ?? verifyPullWorkspace;
-  const resolvedConfigPath = resolve6(configPath);
-  const configDir = dirname7(resolvedConfigPath);
+  const resolvedConfigPath = resolve7(configPath);
+  const configDir = dirname8(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
   requirePullConfig(config);
-  const workspaceRoot = resolve6(configDir, config.workspaceRoot);
-  const state = await loadRootState2(resolve6(workspaceRoot, config.statePath), config.remoteFolderToken);
+  const workspaceRoot = resolve7(configDir, config.workspaceRoot);
+  const state = await loadRootState2(resolve7(workspaceRoot, config.statePath), config.remoteFolderToken);
   const result = await verifyPullWorkspace2({ workspaceRoot, state });
   console.log(JSON.stringify(result, null, 2));
   return result.ok ? 0 : 2;
 }
 async function collectExistingLocalFileHashes(workspaceRoot, outputDir, exclude) {
   const normalizedOutputDir = normalizeWorkspaceRelativePath(outputDir);
-  const scanRoot = resolve6(workspaceRoot, normalizedOutputDir);
+  const scanRoot = resolve7(workspaceRoot, normalizedOutputDir);
   const realWorkspaceRoot = await realpath3(workspaceRoot);
   if (!isInsideWorkspace2(scanRoot, workspaceRoot)) {
     throw new Error(`Path escapes the workspace root: ${outputDir}`);
@@ -25323,7 +25328,7 @@ async function collectExistingLocalFileHashes(workspaceRoot, outputDir, exclude)
   paths.sort();
   const existingLocalFiles = /* @__PURE__ */ new Map();
   for (const path of paths) {
-    const absolutePath = resolve6(scanRoot, path);
+    const absolutePath = resolve7(scanRoot, path);
     const realFilePath = await realpath3(absolutePath);
     if (!isInsideWorkspace2(realFilePath, realWorkspaceRoot)) {
       throw new Error(`Path escapes the workspace root: ${joinRelative2(normalizedOutputDir, path)}`);
@@ -25351,22 +25356,22 @@ function normalizeWorkspaceRelativePath(path) {
   return normalized;
 }
 function isInsideWorkspace2(path, workspaceRoot) {
-  const resolvedPath = resolve6(path);
-  const resolvedRoot = resolve6(workspaceRoot);
+  const resolvedPath = resolve7(path);
+  const resolvedRoot = resolve7(workspaceRoot);
   return resolvedPath === resolvedRoot || resolvedPath.startsWith(`${resolvedRoot}${sep4}`);
 }
 
 // scripts/commands/scan.ts
-import { dirname as dirname8, join as join8, resolve as resolve7 } from "node:path";
+import { dirname as dirname9, join as join8, resolve as resolve8 } from "node:path";
 async function scanCommand(configPath, dependencies = {}) {
   const scanLocalWorkspace2 = dependencies.scanLocalWorkspace ?? scanLocalWorkspace;
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
   const loadState2 = dependencies.loadState ?? loadState;
-  const resolvedConfigPath = resolve7(configPath);
-  const configDir = dirname8(resolvedConfigPath);
+  const resolvedConfigPath = resolve8(configPath);
+  const configDir = dirname9(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
   const publishConfig = requirePublishConfig(config);
-  const workspaceRoot = resolve7(configDir, config.workspaceRoot);
+  const workspaceRoot = resolve8(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
     include: config.include,
@@ -25374,7 +25379,7 @@ async function scanCommand(configPath, dependencies = {}) {
     titleMode: config.titleMode
   });
   const remote = await scanRemoteFolder2(publishConfig.remoteFolderToken);
-  const state = await loadState2(resolve7(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
+  const state = await loadState2(resolve8(workspaceRoot, config.statePath), publishConfig.remoteFolderToken);
   await writeJson(join8(workspaceRoot, ".git-your-lark", "manifest.json"), {
     local,
     remote,
@@ -25385,7 +25390,7 @@ async function scanCommand(configPath, dependencies = {}) {
 }
 
 // scripts/commands/verify.ts
-import { dirname as dirname9, resolve as resolve8 } from "node:path";
+import { dirname as dirname10, resolve as resolve9 } from "node:path";
 
 // scripts/lib/verify.ts
 function verifyManifest(local, remote) {
@@ -25413,11 +25418,11 @@ function verifyManifest(local, remote) {
 async function verifyCommand(configPath, dependencies = {}) {
   const scanLocalWorkspace2 = dependencies.scanLocalWorkspace ?? scanLocalWorkspace;
   const scanRemoteFolder2 = dependencies.scanRemoteFolder ?? scanRemoteFolder;
-  const resolvedConfigPath = resolve8(configPath);
-  const configDir = dirname9(resolvedConfigPath);
+  const resolvedConfigPath = resolve9(configPath);
+  const configDir = dirname10(resolvedConfigPath);
   const config = parseConfig(await readUtf8(resolvedConfigPath));
   const publishConfig = requirePublishConfig(config);
-  const workspaceRoot = resolve8(configDir, config.workspaceRoot);
+  const workspaceRoot = resolve9(configDir, config.workspaceRoot);
   const local = await scanLocalWorkspace2({
     workspaceRoot,
     include: config.include,

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { ConfigSchema } from "../lib/config.js";
 import { writeUtf8 } from "../lib/fs-utils.js";
 import { extractJson, runCommand, type CommandResult } from "../lib/lark-cli.js";
@@ -32,6 +32,10 @@ export const WORKSPACE_GITATTRIBUTES = [
   "*.gif binary",
   "*.webp binary",
   "*.ico binary",
+  "",
+  "# Windows command scripts: keep CRLF so cmd.exe parses them correctly.",
+  "*.cmd text eol=crlf",
+  "*.bat text eol=crlf",
   ""
 ].join("\n");
 
@@ -218,6 +222,7 @@ async function resolveRemoteFolder(options: Required<Pick<InitCommandOptions, "c
 
 export async function initCommand(options: InitCommandOptions): Promise<number> {
   const outputPath = options.outputPath ?? "git-your-lark.yml";
+  const configDir = dirname(resolve(outputPath));
   const workspaceRoot = options.workspaceRoot ?? ".";
   const force = options.force ?? false;
   const hasPullIntent = Boolean(options.pullSourceType || options.pullSourceTokenOrUrl || options.pullOutputDir);
@@ -268,7 +273,7 @@ export async function initCommand(options: InitCommandOptions): Promise<number> 
   // core.autocrlf=true). Resolved relative to the config's workspaceRoot,
   // which is the tree state.json lives in. Never overwrites an existing file.
   try {
-    const written = await writeWorkspaceGitattributes(workspaceRoot);
+    const written = await writeWorkspaceGitattributes(resolve(configDir, workspaceRoot));
     if (written) {
       console.log(`Created ${written} (LF line-ending policy for stable content hashes)`);
     }
