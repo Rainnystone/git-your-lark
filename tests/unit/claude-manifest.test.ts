@@ -44,7 +44,7 @@ function writeBundleFixture() {
   mkdirSync(join(root, "bin"), { recursive: true });
   writeFileSync(join(root, "bin", "gyl"), "#!/usr/bin/env node\n");
   chmodSync(join(root, "bin", "gyl"), 0o755);
-  writeFileSync(join(root, "bin", "gyl.cmd"), "@echo off\nnode \"%~dp0gyl\" %*\n");
+  writeFileSync(join(root, "bin", "gyl.cmd"), "@echo off\r\nnode \"%~dp0gyl\" %*\r\n");
 }
 
 describe("validateClaudePlugin (manifests)", () => {
